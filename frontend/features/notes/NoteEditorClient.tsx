@@ -2,12 +2,10 @@
 
 import { useCallback, useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import ReactMarkdown from "react-markdown";
 import { api } from "@/lib/api";
 import type { Note } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   DropdownMenu,
@@ -30,7 +28,6 @@ import {
 import { useNoteLinkAutocomplete } from "./useNoteLinkAutocomplete";
 import { useNotesRealtime } from "@/hooks/useNotesSocket";
 import { MarkdownContent } from "./MarkdownContent";
-import { cn } from "@/lib/utils";
 
 type NoteEditorClientProps = {
   workspaceId: string;
@@ -255,17 +252,19 @@ export function NoteEditorClient({
         </div>
       </header>
 
-      <div className="flex-1 flex min-h-0">
-        <ScrollArea className="flex-1">
-          <div className="max-w-3xl mx-auto px-6 py-6">
-            <div className="flex gap-4">
-              <div className="flex-1 min-w-0">
+      <div className="flex-1 flex min-h-0 overflow-hidden">
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="max-w-6xl mx-auto px-6 py-6 min-w-0">
+            <div className="flex gap-4 min-w-0">
+              <div className="flex-1 min-w-0 overflow-hidden">
                 {isPreview ? (
-                  <MarkdownContent
-                    content={content}
-                    workspaceId={workspaceId}
-                    className="p-4"
-                  />
+                  <div className="overflow-x-hidden overflow-y-auto max-h-[calc(100vh-20rem)] rounded-lg border border-input bg-background">
+                    <MarkdownContent
+                      content={content}
+                      workspaceId={workspaceId}
+                      className="p-4"
+                    />
+                  </div>
                 ) : (
                 <div className="relative">
                   <textarea
@@ -273,17 +272,8 @@ export function NoteEditorClient({
                     value={content}
                     onChange={handleContentChange}
                     onBlur={hideAutocomplete}
-                    placeholder="Escreva sua nota em Markdown...
-
-# Título
-## Subtítulo
-- Lista
-- [ ] Checklist
-- [x] Concluído
-[[Link para outra nota]]
-\`\`\`código\`\`\`
-> Citação"
-                    className="w-full min-h-[400px] p-4 rounded-lg border border-input bg-background text-foreground resize-y focus:outline-none focus:ring-2 focus:ring-ring font-mono text-sm"
+                    placeholder="Escreva sua nota em Markdown... # Título ## Subtítulo - Lista - [ ] Checklist [[Link para outra nota]] > Citação"
+                    className="w-full h-[calc(100vh-20rem)] max-h-[calc(100vh-20rem)] p-4 rounded-lg border border-input bg-background text-foreground resize-none overflow-y-auto focus:outline-none focus:ring-2 focus:ring-ring font-mono text-sm"
                     spellCheck={false}
                   />
                   {showAutocomplete && autocompleteNotes.length > 0 && !isPreview && (
@@ -354,3 +344,4 @@ export function NoteEditorClient({
     </div>
   );
 }
+
