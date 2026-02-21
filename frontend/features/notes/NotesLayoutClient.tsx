@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import type { NoteFolder, Note } from "@/lib/types";
+import { useNotesStructureRealtime } from "@/hooks/useNotesSocket";
 import { NotesSidebar } from "./NotesSidebar";
 
 type NotesLayoutClientProps = {
@@ -41,6 +42,8 @@ export function NotesLayoutClient({
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useNotesStructureRealtime(workspaceId, refresh);
 
   const handleNoteCreated = useCallback(
     (note: Note) => {

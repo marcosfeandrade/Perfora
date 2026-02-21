@@ -28,6 +28,7 @@ import {
   Edit3,
 } from "lucide-react";
 import { useNoteLinkAutocomplete } from "./useNoteLinkAutocomplete";
+import { useNotesRealtime } from "@/hooks/useNotesSocket";
 import { MarkdownContent } from "./MarkdownContent";
 import { cn } from "@/lib/utils";
 
@@ -71,9 +72,18 @@ export function NoteEditorClient({
   const [isPreview, setIsPreview] = useState(false);
   const [backlinks, setBacklinks] = useState<{ id: string; title: string }[]>([]);
   const contentRef = useRef<HTMLTextAreaElement>(null);
+  const stateRef = useRef({ title, content, debouncedTitle: "", debouncedContent: "", note });
 
   const debouncedTitle = useDebounce(title, 500);
   const debouncedContent = useDebounce(content, 500);
+
+  stateRef.current = {
+    title,
+    content,
+    debouncedTitle,
+    debouncedContent,
+    note,
+  };
 
   const {
     showAutocomplete,
@@ -82,6 +92,20 @@ export function NoteEditorClient({
     hideAutocomplete,
     onContentChange,
   } = useNoteLinkAutocomplete(workspaceId, note.id, content, setContent, contentRef);
+
+  useNotesRealtime(workspaceId, note.id, (updated) => {
+    const s = stateRef.current;
+    const hasPendingChanges =
+      s.title !== s.debouncedTitle || s.content !== s.debouncedContent;
+    const isNewer =
+      new Date(updated.updatedAt).getTime() >
+      new Date(s.note.updatedAt).getTime();
+    if (!hasPendingChanges && isNewer) {
+      setNote(updated);
+      setTitle(updated.title);
+      setContent(updated.content);
+    }
+  });
 
   useEffect(() => {
     setNote(initialNote);

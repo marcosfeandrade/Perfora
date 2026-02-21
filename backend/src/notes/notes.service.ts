@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../core/prisma/prisma.service.js';
+import { NotesGateway } from './notes.gateway.js';
 import { CreateFolderDto } from './dto/create-folder.dto.js';
 import { UpdateFolderDto } from './dto/update-folder.dto.js';
 import { CreateNoteDto } from './dto/create-note.dto.js';
@@ -8,7 +9,10 @@ import { MoveNoteDto } from './dto/move-note.dto.js';
 
 @Injectable()
 export class NotesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notesGateway: NotesGateway,
+  ) {}
 
   async getFolders(workspaceId: string) {
     return this.prisma.noteFolder.findMany({
@@ -52,7 +56,7 @@ export class NotesService {
         _max: { order: true },
       })
       .then((r) => (r._max.order ?? -1) + 1);
-    return this.prisma.noteFolder.create({
+    const folder = await this.prisma.noteFolder.create({
       data: {
         name: dto.name,
         parentId: dto.parentId ?? null,
@@ -60,19 +64,26 @@ export class NotesService {
         order: dto.order ?? maxOrder,
       },
     });
+    this.notesGateway.broadcastNotesStructureUpdate(workspaceId);
+    return folder;
   }
 
   async updateFolder(id: string, dto: UpdateFolderDto) {
-    return this.prisma.noteFolder.update({
+    const folder = await this.prisma.noteFolder.update({
       where: { id },
       data: dto,
     });
+    this.notesGateway.broadcastNotesStructureUpdate(folder.workspaceId);
+    return folder;
   }
 
   async deleteFolder(id: string) {
-    return this.prisma.noteFolder.delete({
+    const folder = await this.prisma.noteFolder.findUniqueOrThrow({
       where: { id },
+      select: { workspaceId: true },
     });
+    await this.prisma.noteFolder.delete({ where: { id } });
+    this.notesGateway.broadcastNotesStructureUpdate(folder.workspaceId);
   }
 
   async getNotes(workspaceId: string) {
@@ -112,7 +123,7 @@ export class NotesService {
         _max: { order: true },
       })
       .then((r) => (r._max.order ?? -1) + 1);
-    return this.prisma.note.create({
+    const note = await this.prisma.note.create({
       data: {
         title: dto.title,
         content: dto.content ?? '',
@@ -121,26 +132,37 @@ export class NotesService {
         order: dto.order ?? maxOrder,
       },
     });
+    this.notesGateway.broadcastNoteUpdate(workspaceId, note);
+    this.notesGateway.broadcastNotesStructureUpdate(workspaceId);
+    return note;
   }
 
   async updateNote(id: string, dto: UpdateNoteDto) {
-    return this.prisma.note.update({
+    const note = await this.prisma.note.update({
       where: { id },
       data: dto,
     });
+    this.notesGateway.broadcastNoteUpdate(note.workspaceId, note);
+    return note;
   }
 
   async moveNote(id: string, dto: MoveNoteDto) {
-    return this.prisma.note.update({
+    const note = await this.prisma.note.update({
       where: { id },
       data: { folderId: dto.folderId ?? null, order: dto.order },
     });
+    this.notesGateway.broadcastNoteUpdate(note.workspaceId, note);
+    this.notesGateway.broadcastNotesStructureUpdate(note.workspaceId);
+    return note;
   }
 
   async deleteNote(id: string) {
-    return this.prisma.note.delete({
+    const note = await this.prisma.note.findUniqueOrThrow({
       where: { id },
+      select: { workspaceId: true },
     });
+    await this.prisma.note.delete({ where: { id } });
+    this.notesGateway.broadcastNotesStructureUpdate(note.workspaceId);
   }
 
   async getBacklinks(noteId: string) {
