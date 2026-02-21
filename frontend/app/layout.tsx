@@ -34,11 +34,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR">
-      <body className="antialiased">
-        <AuthProvider>
-          <AuthGuard>{children}</AuthGuard>
-        </AuthProvider>
+    <html lang="en">
+      <body
+        className={`antialiased`}
+      >
+        <Header />
+        {children}
       </body>
     </html>
   );
