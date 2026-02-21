@@ -52,6 +52,10 @@ export class AgileGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(this.roomName(workspaceId)).emit('board-update', board);
   }
 
+  broadcastBacklogUpdate(workspaceId: string) {
+    this.server.to(this.roomName(workspaceId)).emit('backlog-update');
+  }
+
   private roomName(workspaceId: string) {
     return `${WORKSPACE_ROOM_PREFIX}${workspaceId}`;
   }

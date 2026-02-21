@@ -17,9 +17,13 @@ export class CreateCardDto {
   @Type(() => Number)
   order: number;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  columnId: string;
+  columnId?: string;
+
+  @IsOptional()
+  @IsString()
+  workspaceId?: string;
 
   @IsOptional()
   @IsArray()

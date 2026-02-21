@@ -28,6 +28,7 @@ model Workspace {
   boards             Board[]
   folders            NoteFolder[]
   notes              Note[]
+  cards              Card[]
 }
 
 model NoteFolder {
@@ -76,14 +77,16 @@ model Column {
 }
 
 model Card {
-  id          String   @id @default(cuid())
-  columnId    String
-  column      Column   @relation(fields: [columnId], references: [id], onDelete: Cascade)
-  title       String
-  code        String?
-  description String?
-  order       Int
-  assignees   CardAssignee[]
+  id           String    @id @default(cuid())
+  columnId     String?
+  column       Column?   @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  workspaceId  String
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  title        String
+  code         String?
+  description  String?
+  order        Int
+  assignees    CardAssignee[]
 }
 
 model CardAssignee {

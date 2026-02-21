@@ -30,6 +30,11 @@ export class AgileController {
     return this.agileService.findBoardsByWorkspace(workspaceId);
   }
 
+  @Get('workspaces/:workspaceId/backlog')
+  findBacklogCards(@Param('workspaceId') workspaceId: string) {
+    return this.agileService.findBacklogCards(workspaceId);
+  }
+
   @Get('boards/:id')
   findBoard(@Param('id') id: string) {
     return this.agileService.findBoard(id);

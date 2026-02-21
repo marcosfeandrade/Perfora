@@ -25,6 +25,18 @@ export class AgileService {
     });
   }
 
+  findBacklogCards(workspaceId: string) {
+    return this.prisma.card.findMany({
+      where: { workspaceId, columnId: null },
+      orderBy: { order: 'asc' },
+      include: {
+        assignees: {
+          include: { user: { select: { id: true, email: true, name: true } } },
+        },
+      },
+    });
+  }
+
   findBoardsByWorkspace(workspaceId: string) {
     return this.prisma.board.findMany({
       where: { workspaceId },
@@ -185,30 +197,76 @@ export class AgileService {
   }
 
   async createCard(dto: CreateCardDto) {
-    const { assigneeIds, ...rest } = dto;
+    const { assigneeIds, columnId, workspaceId, ...rest } = dto;
     const title = rest.title.trim() || 'Nova task';
     let code: string | null = null;
 
-    const column = await this.prisma.column.findUniqueOrThrow({
-      where: { id: dto.columnId },
-      include: { board: { include: { workspace: true } } },
+    if (columnId) {
+      const column = await this.prisma.column.findUniqueOrThrow({
+        where: { id: columnId },
+        include: { board: { include: { workspace: true } } },
+      });
+      const workspace = column.board.workspace;
+
+      if (workspace.plannerTaskPrefix?.trim()) {
+        const prefix = workspace.plannerTaskPrefix.trim().toUpperCase();
+        const count = await this.prisma.card.count({
+          where: { workspaceId: workspace.id },
+        });
+        code = `${prefix}-${count + 1}`;
+      }
+
+      const card = await this.prisma.card.create({
+        data: {
+          ...rest,
+          title,
+          code,
+          columnId,
+          workspaceId: column.board.workspaceId,
+          description: rest.description ?? null,
+          assignees: assigneeIds?.length
+            ? { create: assigneeIds.map((userId) => ({ userId })) }
+            : undefined,
+        },
+        include: {
+          assignees: {
+            include: { user: { select: { id: true, email: true, name: true } } },
+          },
+        },
+      });
+      await this.broadcastBoardForColumn(columnId);
+      return card;
+    }
+
+    if (!workspaceId) {
+      throw new Error('workspaceId é obrigatório para criar card no backlog');
+    }
+
+    const workspace = await this.prisma.workspace.findUniqueOrThrow({
+      where: { id: workspaceId },
     });
-    const workspace = column.board.workspace;
 
     if (workspace.plannerTaskPrefix?.trim()) {
       const prefix = workspace.plannerTaskPrefix.trim().toUpperCase();
       const count = await this.prisma.card.count({
-        where: { column: { board: { workspaceId: workspace.id } } },
+        where: { workspaceId },
       });
       code = `${prefix}-${count + 1}`;
     }
+
+    const backlogCount = await this.prisma.card.count({
+      where: { workspaceId, columnId: null },
+    });
 
     const card = await this.prisma.card.create({
       data: {
         ...rest,
         title,
         code,
+        workspaceId,
+        columnId: null,
         description: rest.description ?? null,
+        order: backlogCount,
         assignees: assigneeIds?.length
           ? { create: assigneeIds.map((userId) => ({ userId })) }
           : undefined,
@@ -219,7 +277,7 @@ export class AgileService {
         },
       },
     });
-    await this.broadcastBoardForColumn(dto.columnId);
+    this.agileGateway.broadcastBacklogUpdate(workspaceId);
     return card;
   }
 
@@ -242,26 +300,78 @@ export class AgileService {
         },
       },
     });
-    await this.broadcastBoardForColumn(updated.columnId);
+    if (updated.columnId) {
+      await this.broadcastBoardForColumn(updated.columnId);
+    } else {
+      this.agileGateway.broadcastBacklogUpdate(updated.workspaceId);
+    }
     return updated;
   }
 
   async removeCard(id: string) {
     const card = await this.prisma.card.findUniqueOrThrow({
       where: { id },
-      select: { columnId: true },
+      select: { columnId: true, workspaceId: true },
     });
     await this.prisma.card.delete({
       where: { id },
     });
-    await this.broadcastBoardForColumn(card.columnId);
+    if (card.columnId) {
+      await this.broadcastBoardForColumn(card.columnId);
+    } else {
+      this.agileGateway.broadcastBacklogUpdate(card.workspaceId);
+    }
   }
 
   async moveCard(cardId: string, dto: MoveCardDto) {
     const card = await this.prisma.card.findUniqueOrThrow({
       where: { id: cardId },
-      include: { column: true },
+      include: { column: true, workspace: true },
     });
+
+    const movingToBacklog = !dto.targetColumnId;
+    const movingToColumn = !!dto.targetColumnId;
+
+    if (movingToBacklog) {
+      let backlogCards = await this.prisma.card.findMany({
+        where: { workspaceId: card.workspaceId, columnId: null },
+        orderBy: { order: 'asc' },
+      });
+      const existingIndex = backlogCards.findIndex((c) => c.id === cardId);
+      const toIndex = Math.min(dto.order, backlogCards.length);
+      const reordered =
+        existingIndex >= 0
+          ? reorderArray(backlogCards, existingIndex, toIndex)
+          : (() => {
+              const rest = backlogCards.filter((c) => c.id !== cardId);
+              rest.splice(toIndex, 0, card as (typeof backlogCards)[0]);
+              return rest;
+            })();
+      await this.prisma.$transaction(
+        reordered.map((c, i) =>
+          this.prisma.card.update({
+            where: { id: c.id },
+            data: {
+              columnId: c.id === cardId ? null : undefined,
+              workspaceId: c.id === cardId ? card.workspaceId : undefined,
+              order: i,
+            },
+          }),
+        ),
+      );
+      this.agileGateway.broadcastBacklogUpdate(card.workspaceId);
+      if (card.columnId) {
+        await this.broadcastBoardForColumn(card.columnId);
+      }
+      return this.prisma.card.findUniqueOrThrow({
+        where: { id: cardId },
+        include: {
+          assignees: {
+            include: { user: { select: { id: true, email: true, name: true } } },
+          },
+        },
+      });
+    }
 
     const sameColumn = card.columnId === dto.targetColumnId;
     const targetOrder = dto.order;
@@ -276,20 +386,33 @@ export class AgileService {
         return this.prisma.card.findUniqueOrThrow({ where: { id: cardId } });
       }
       const reordered = reorderArray(columnCards, fromIndex, targetOrder);
-      await this.reorderCardsInColumn(card.columnId, reordered);
+      await this.reorderCardsInColumn(card.columnId!, reordered);
     } else {
+      const targetColumnId = dto.targetColumnId!;
+      const targetColumn = await this.prisma.column.findUniqueOrThrow({
+        where: { id: targetColumnId },
+        select: { boardId: true, board: { select: { workspaceId: true } } },
+      });
       await this.prisma.card.update({
         where: { id: cardId },
-        data: { columnId: dto.targetColumnId, order: targetOrder },
+        data: {
+          columnId: targetColumnId,
+          workspaceId: targetColumn.board.workspaceId,
+          order: targetOrder,
+        },
       });
       const targetColumnCards = await this.prisma.card.findMany({
-        where: { columnId: dto.targetColumnId },
+        where: { columnId: targetColumnId },
         orderBy: [{ order: 'asc' }, { id: 'asc' }],
       });
       await this.reorderCardsInColumn(
-        dto.targetColumnId,
+        targetColumnId,
         targetColumnCards.map((c) => ({ id: c.id })),
       );
+      if (card.columnId) {
+        await this.broadcastBoardForColumn(card.columnId);
+      }
+      this.agileGateway.broadcastBacklogUpdate(card.workspaceId);
     }
 
     const updated = await this.prisma.card.findUniqueOrThrow({
@@ -297,7 +420,7 @@ export class AgileService {
       include: { column: true },
     });
     const column = await this.prisma.column.findUniqueOrThrow({
-      where: { id: updated.columnId },
+      where: { id: updated.columnId! },
       select: { boardId: true },
     });
     const fullBoard = await this.findBoard(column.boardId);

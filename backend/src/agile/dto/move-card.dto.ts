@@ -1,10 +1,10 @@
-import { IsString, IsNotEmpty, IsInt, Min } from 'class-validator';
+import { IsString, IsOptional, IsInt, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class MoveCardDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  targetColumnId: string;
+  targetColumnId?: string;
 
   @IsInt()
   @Min(0)

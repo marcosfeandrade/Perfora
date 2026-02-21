@@ -14,7 +14,8 @@ export interface CardAssignee {
 
 export interface Card {
   id: string;
-  columnId: string;
+  columnId: string | null;
+  workspaceId: string;
   title: string;
   code?: string | null;
   description: string | null;

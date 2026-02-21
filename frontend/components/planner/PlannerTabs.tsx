@@ -9,6 +9,7 @@ type PlannerTabsProps = {
 };
 
 const TABS = [
+  { href: "/backlog", label: "Backlog" },
   { href: "/board", label: "Board" },
   { href: "/timeline", label: "Timeline" },
 ] as const;

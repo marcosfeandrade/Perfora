@@ -58,6 +58,8 @@ export const api = {
       request<void>(`/workspaces/${id}`, { method: "DELETE" }),
   },
   agile: {
+    backlog: (workspaceId: string) =>
+      request<Card[]>(`/agile/workspaces/${workspaceId}/backlog`),
     boards: {
       listByWorkspace: (workspaceId: string) =>
         request<Board[]>(`/agile/workspaces/${workspaceId}/boards`),
@@ -86,7 +88,8 @@ export const api = {
         title: string;
         description?: string;
         order: number;
-        columnId: string;
+        columnId?: string;
+        workspaceId?: string;
         assigneeIds?: string[];
       }) =>
         request<Card>("/agile/cards", { method: "POST", body: JSON.stringify(body) }),
@@ -99,7 +102,7 @@ export const api = {
         request<Card>(`/agile/cards/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
       delete: (id: string) =>
         request<void>(`/agile/cards/${id}`, { method: "DELETE" }),
-      move: (id: string, body: { targetColumnId: string; order: number }) =>
+      move: (id: string, body: { targetColumnId?: string | null; order: number }) =>
         request<Card>(`/agile/cards/${id}/move`, {
           method: "PATCH",
           body: JSON.stringify(body),
