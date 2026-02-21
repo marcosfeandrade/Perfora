@@ -35,11 +35,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`antialiased`}
-      >
-        <Header />
-        {children}
+      <body className="antialiased min-h-screen">
+        <AuthProvider>
+          <AuthGuard>{children}</AuthGuard>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -1,0 +1,41 @@
+import Link from "next/link";
+import { api } from "@/lib/api";
+import { CreateBoardForm } from "@/features/agile/CreateBoardForm";
+
+type BoardListPageProps = {
+  params: Promise<{ id: string }>;
+};
+
+export default async function BoardListPage({ params }: BoardListPageProps) {
+  const { id: workspaceId } = await params;
+  let boards: { id: string; name: string; workspaceId: string }[] = [];
+
+  try {
+    boards = await api.agile.boards.listByWorkspace(workspaceId);
+  } catch {
+    boards = [];
+  }
+
+  return (
+    <div className="p-8">
+      <h2 className="text-lg font-semibold text-text mb-4">Boards</h2>
+      <CreateBoardForm workspaceId={workspaceId} />
+      {boards.length === 0 ? (
+        <p className="text-muted mt-6">Nenhum board ainda. Crie um acima.</p>
+      ) : (
+        <ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {boards.map((b) => (
+            <li key={b.id}>
+              <Link
+                href={`/workspace/${workspaceId}/planner/board/${b.id}`}
+                className="block p-4 rounded-lg bg-surface hover:bg-white/5 text-text border border-white/10 transition-colors"
+              >
+                {b.name}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
