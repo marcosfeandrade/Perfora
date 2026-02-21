@@ -3,6 +3,7 @@
 import { memo, useCallback } from "react";
 import type { Card } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
+import { getPriorityDisplay } from "../priorityDisplay";
 import { cn } from "@/lib/utils";
 import { TimelineBar } from "./TimelineBar";
 import {
@@ -83,6 +84,14 @@ export const TimelineRow = memo(function TimelineRow({
           {card.title}
         </p>
         <div className="flex items-center gap-1 shrink-0">
+          {getPriorityDisplay(card.priority) && (
+            <span
+              title={getPriorityDisplay(card.priority)!.label}
+              className="text-xs"
+            >
+              {getPriorityDisplay(card.priority)!.emoji}
+            </span>
+          )}
           {assignees.slice(0, 2).map((a) => (
             <span
               key={a.id}

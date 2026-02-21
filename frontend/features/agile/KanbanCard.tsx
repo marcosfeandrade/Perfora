@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import type { Card as CardType, CardAssignee } from "@/lib/types";
 import { CardAssigneePicker } from "./CardAssigneePicker";
+import { getPriorityDisplay } from "./priorityDisplay";
 import { CardDetailModal } from "./CardDetailModal";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,7 @@ type KanbanCardProps = {
   onLabelsChange?: (cardId: string, labels: string[]) => Promise<void>;
   onStartDateChange?: (cardId: string, date: string | null) => Promise<void>;
   onDueDateChange?: (cardId: string, date: string | null) => Promise<void>;
+  onPriorityChange?: (cardId: string, priority: string | null) => Promise<void>;
 };
 
 function normalizeAssignees(
@@ -40,6 +42,7 @@ export function KanbanCard({
   onLabelsChange,
   onStartDateChange,
   onDueDateChange,
+  onPriorityChange,
 }: KanbanCardProps) {
   const { setNodeRef: setDroppableRef } = useDroppable({ id: card.id });
   const {
@@ -88,23 +91,31 @@ export function KanbanCard({
             {card.code && (
               <p className="text-muted-foreground text-xs mt-0.5">{card.code}</p>
             )}
-            {(card.labels as string[])?.length ? (
-              <div className="flex flex-wrap gap-1 mt-1">
-                {(card.labels as string[]).slice(0, 3).map((l) => (
-                  <span
-                    key={l}
-                    className="inline-flex px-1.5 py-0.5 rounded text-[10px] bg-primary/10 text-primary"
-                  >
-                    {l}
-                  </span>
-                ))}
-                {(card.labels as string[]).length > 3 && (
-                  <span className="text-[10px] text-muted-foreground">
-                    +{(card.labels as string[]).length - 3}
-                  </span>
-                )}
-              </div>
-            ) : null}
+            <div className="flex items-center gap-1 mt-1 flex-wrap">
+              {getPriorityDisplay(card.priority) && (
+                <span
+                  title={getPriorityDisplay(card.priority)!.label}
+                  className="text-xs"
+                >
+                  {getPriorityDisplay(card.priority)!.emoji}
+                </span>
+              )}
+              {(card.labels as string[])?.length
+                ? (card.labels as string[]).slice(0, 3).map((l) => (
+                    <span
+                      key={l}
+                      className="inline-flex px-1.5 py-0.5 rounded text-[10px] bg-primary/10 text-primary"
+                    >
+                      {l}
+                    </span>
+                  ))
+                : null}
+              {(card.labels as string[])?.length > 3 && (
+                <span className="text-[10px] text-muted-foreground">
+                  +{(card.labels as string[]).length - 3}
+                </span>
+              )}
+            </div>
           </div>
           <div
             className="flex-shrink-0 flex items-center gap-0.5"
@@ -143,6 +154,7 @@ export function KanbanCard({
           onLabelsChange={onLabelsChange}
           onStartDateChange={onStartDateChange}
           onDueDateChange={onDueDateChange}
+          onPriorityChange={onPriorityChange}
         />
       )}
     </>

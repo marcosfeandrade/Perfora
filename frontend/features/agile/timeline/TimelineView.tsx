@@ -168,25 +168,38 @@ export function TimelineView({
   const handleAssigneesChange = useCallback(
     async (cardId: string, assigneeIds: string[]) => {
       try {
-        await api.agile.cards.update(cardId, { assigneeIds });
-        await refresh();
+        const updated = await api.agile.cards.update(cardId, { assigneeIds });
+        const raw =
+          (updated as {
+            assignees?: { user?: { id: string; email: string; name: string | null } }[];
+          }).assignees ?? [];
+        const assignees = raw.map((a) =>
+          "user" in a && a.user ? a.user : a
+        ) as { id: string; email: string; name: string | null }[];
+        updateCardInState(cardId, (c) => ({ ...c, assignees }));
+        setEditingCard((prev) =>
+          prev?.id === cardId ? { ...prev, assignees } : prev
+        );
       } catch {
         await refresh();
       }
     },
-    [refresh]
+    [updateCardInState, refresh]
   );
 
   const handleLabelsChange = useCallback(
     async (cardId: string, labels: string[]) => {
       try {
         await api.agile.cards.update(cardId, { labels });
-        await refresh();
+        updateCardInState(cardId, (c) => ({ ...c, labels }));
+        setEditingCard((prev) =>
+          prev?.id === cardId ? { ...prev, labels } : prev
+        );
       } catch {
         await refresh();
       }
     },
-    [refresh]
+    [updateCardInState, refresh]
   );
 
   const handleStartDateChange = useCallback(
@@ -245,6 +258,23 @@ export function TimelineView({
     [refresh]
   );
 
+  const handlePriorityChange = useCallback(
+    async (cardId: string, priority: string | null) => {
+      try {
+        await api.agile.cards.update(cardId, {
+          priority: priority ?? undefined,
+        });
+        updateCardInState(cardId, (c) => ({ ...c, priority }));
+        setEditingCard((prev) =>
+          prev?.id === cardId ? { ...prev, priority } : prev
+        );
+      } catch {
+        await refresh();
+      }
+    },
+    [updateCardInState, refresh]
+  );
+
   const selectedBoard = boards.find((b) => b.id === selectedBoardId);
   const title =
     !showAllTasks && selectedBoard
@@ -301,6 +331,7 @@ export function TimelineView({
           onLabelsChange={handleLabelsChange}
           onStartDateChange={handleStartDateChange}
           onDueDateChange={handleDueDateChange}
+          onPriorityChange={handlePriorityChange}
         />
       )}
     </div>

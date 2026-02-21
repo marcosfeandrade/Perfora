@@ -13,7 +13,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { CardAssigneePicker } from "./CardAssigneePicker";
 import { cn } from "@/lib/utils";
-import { Users, Tag, Calendar, User } from "lucide-react";
+import { Users, Tag, Calendar, User, Flag } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type CardAssignee = { id: string; email: string; name: string | null };
 
@@ -29,7 +35,15 @@ type CardDetailModalProps = {
   onLabelsChange?: (cardId: string, labels: string[]) => Promise<void>;
   onStartDateChange?: (cardId: string, date: string | null) => Promise<void>;
   onDueDateChange?: (cardId: string, date: string | null) => Promise<void>;
+  onPriorityChange?: (cardId: string, priority: string | null) => Promise<void>;
 };
+
+const PRIORITY_OPTIONS = [
+  { value: "low", label: "Baixa" },
+  { value: "normal", label: "Normal" },
+  { value: "high", label: "Alta" },
+  { value: "urgent", label: "Urgente" },
+] as const;
 
 function normalizeAssignees(assignees: CardType["assignees"]): CardAssignee[] {
   if (!assignees?.length) return [];
@@ -51,6 +65,7 @@ export function CardDetailModal({
   onLabelsChange,
   onStartDateChange,
   onDueDateChange,
+  onPriorityChange,
 }: CardDetailModalProps) {
   const [availableLabelsState, setAvailableLabelsState] = useState<string[]>(
     availableLabels ?? []
@@ -161,6 +176,13 @@ export function CardDetailModal({
   const handleDueDateChange = async (value: string) => {
     const date = value || null;
     onDueDateChange?.(card.id, date);
+  };
+
+  const priorityLabel =
+    PRIORITY_OPTIONS.find((o) => o.value === card.priority)?.label ?? "Nenhuma";
+
+  const handlePrioritySelect = (value: string | null) => {
+    onPriorityChange?.(card.id, value);
   };
 
   return (
@@ -337,6 +359,40 @@ export function CardDetailModal({
                   onChange={(e) => handleDueDateChange(e.target.value)}
                   className="h-8 text-xs"
                 />
+              </div>
+            )}
+            {onPriorityChange && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                  <Flag className="size-3" />
+                  Prioridade
+                </p>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="w-full h-8 px-2 rounded-md border border-input bg-background text-left text-xs text-foreground hover:bg-accent"
+                    >
+                      {priorityLabel}
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="min-w-[140px]">
+                    {PRIORITY_OPTIONS.map((opt) => (
+                      <DropdownMenuItem
+                        key={opt.value}
+                        onSelect={() => handlePrioritySelect(opt.value)}
+                      >
+                        {opt.label}
+                      </DropdownMenuItem>
+                    ))}
+                    <DropdownMenuItem
+                      onSelect={() => handlePrioritySelect(null)}
+                      className="text-muted-foreground"
+                    >
+                      Limpar
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             )}
             {card.createdBy && (

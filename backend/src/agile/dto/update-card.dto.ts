@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsInt, Min, MaxLength, IsArray, IsDateString } from 'class-validator';
+import { IsString, IsOptional, IsInt, Min, MaxLength, IsArray, IsDateString, IsIn, ValidateIf } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class UpdateCardDto {
@@ -39,4 +39,10 @@ export class UpdateCardDto {
   @IsArray()
   @IsString({ each: true })
   labels?: string[];
+
+  @IsOptional()
+  @ValidateIf((v) => v != null && v !== '')
+  @IsString()
+  @IsIn(['low', 'normal', 'high', 'urgent'])
+  priority?: string | null;
 }

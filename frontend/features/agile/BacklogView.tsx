@@ -22,6 +22,7 @@ import { Plus } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { CardDetailModal } from "./CardDetailModal";
+import { getPriorityDisplay } from "./priorityDisplay";
 import {
   joinWorkspaceRoom,
   leaveWorkspaceRoom,
@@ -97,8 +98,17 @@ function DraggableCard({
         {card.code && (
           <p className="text-muted-foreground text-xs mt-0.5">{card.code}</p>
         )}
-        {(card.labels as string[])?.length ? (
-          <div className="flex flex-wrap gap-1 mt-1">
+        <div className="flex items-center gap-1 mt-1 flex-wrap">
+          {getPriorityDisplay(card.priority) && (
+            <span
+              title={getPriorityDisplay(card.priority)!.label}
+              className="text-xs"
+            >
+              {getPriorityDisplay(card.priority)!.emoji}
+            </span>
+          )}
+          {(card.labels as string[])?.length ? (
+          <>
             {(card.labels as string[]).slice(0, 3).map((l) => (
               <span
                 key={l}
@@ -112,8 +122,9 @@ function DraggableCard({
                 +{(card.labels as string[]).length - 3}
               </span>
             )}
-          </div>
+          </>
         ) : null}
+        </div>
       </div>
       {assignees.length > 0 && (
         <div className="flex gap-0.5 shrink-0">
@@ -469,6 +480,15 @@ export function BacklogView({
     [refresh]
   );
 
+  const handlePriorityChange = useCallback(
+    async (cardId: string, priority: string | null) => {
+      await api.agile.cards.update(cardId, { priority: priority ?? undefined });
+      await refresh();
+      setEditingCard((prev) => (prev?.id === cardId ? { ...prev, priority } : prev));
+    },
+    [refresh]
+  );
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
@@ -577,8 +597,17 @@ export function BacklogView({
                 {activeCard.code && (
                   <p className="text-muted-foreground text-xs mt-0.5">{activeCard.code}</p>
                 )}
-                {((activeCard.labels as string[]) ?? []).length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1">
+                <div className="flex items-center gap-1 mt-1 flex-wrap">
+                  {getPriorityDisplay(activeCard.priority) && (
+                    <span
+                      title={getPriorityDisplay(activeCard.priority)!.label}
+                      className="text-xs"
+                    >
+                      {getPriorityDisplay(activeCard.priority)!.emoji}
+                    </span>
+                  )}
+                  {((activeCard.labels as string[]) ?? []).length > 0 && (
+                  <>
                     {((activeCard.labels as string[]) ?? []).slice(0, 3).map((l) => (
                       <span
                         key={l}
@@ -592,8 +621,9 @@ export function BacklogView({
                         +{((activeCard.labels as string[]) ?? []).length - 3}
                       </span>
                     )}
-                  </div>
-                )}
+                  </>
+                  )}
+                </div>
               </div>
               {(activeCard.assignees ?? []).length > 0 && (
                 <div className="flex gap-0.5 shrink-0">
@@ -627,6 +657,7 @@ export function BacklogView({
           onLabelsChange={handleLabelsChange}
           onStartDateChange={handleStartDateChange}
           onDueDateChange={handleDueDateChange}
+          onPriorityChange={handlePriorityChange}
         />
       )}
     </DndContext>

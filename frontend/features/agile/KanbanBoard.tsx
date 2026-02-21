@@ -15,6 +15,7 @@ import { api } from "@/lib/api";
 import { useAgileBoardRealtime } from "@/hooks/useAgileSocket";
 import type { Board as BoardType, Column, Card as CardType } from "@/lib/types";
 import { KanbanColumn } from "./KanbanColumn";
+import { getPriorityDisplay } from "./priorityDisplay";
 import { CreateColumnForm } from "./CreateColumnForm";
 import { Card } from "@/components/ui/card";
 
@@ -237,6 +238,24 @@ export function KanbanBoard({
     []
   );
 
+  const handlePriorityChange = useCallback(
+    async (cardId: string, priority: string | null) => {
+      const updated = await api.agile.cards.update(cardId, {
+        priority: priority ?? undefined,
+      });
+      setBoard((prev) => ({
+        ...prev,
+        columns: prev.columns.map((col) => ({
+          ...col,
+          cards: (col.cards ?? []).map((c) =>
+            c.id === cardId ? { ...c, priority: updated.priority ?? null } : c
+          ),
+        })),
+      }));
+    },
+    []
+  );
+
   const handleAddCard = useCallback(
     (columnId: string, title: string) => {
       const column = board.columns.find((c) => c.id === columnId);
@@ -279,6 +298,7 @@ export function KanbanBoard({
               onLabelsChange={handleLabelsChange}
               onStartDateChange={handleStartDateChange}
               onDueDateChange={handleDueDateChange}
+              onPriorityChange={handlePriorityChange}
               onMoveLeft={() => handleMoveColumnLeft(col.id)}
               onMoveRight={() => handleMoveColumnRight(col.id)}
               onSetWipLimit={(limit) => handleSetWipLimit(col.id, limit)}
@@ -296,7 +316,16 @@ export function KanbanBoard({
               {activeCard.code && (
                 <p className="text-muted-foreground text-xs mt-0.5">{activeCard.code}</p>
               )}
-              {((activeCard.labels as string[]) ?? []).length > 0 && (
+              <div className="flex items-center gap-1 mt-1 flex-wrap">
+                {getPriorityDisplay(activeCard.priority) && (
+                  <span
+                    title={getPriorityDisplay(activeCard.priority)!.label}
+                    className="text-xs"
+                  >
+                    {getPriorityDisplay(activeCard.priority)!.emoji}
+                  </span>
+                )}
+                {((activeCard.labels as string[]) ?? []).length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1">
                   {((activeCard.labels as string[]) ?? []).slice(0, 3).map((l) => (
                     <span
@@ -312,7 +341,8 @@ export function KanbanBoard({
                     </span>
                   )}
                 </div>
-              )}
+                )}
+              </div>
               {(activeCard.assignees ?? []).length > 0 && (
                 <div className="flex gap-0.5 mt-2">
                   {(activeCard.assignees ?? []).slice(0, 3).map((a: { id: string; name?: string | null; email?: string }) => (

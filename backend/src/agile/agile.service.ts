@@ -306,7 +306,7 @@ export class AgileService {
   }
 
   async updateCard(id: string, dto: UpdateCardDto) {
-    const { assigneeIds, labels, startDate, dueDate, ...rest } = dto;
+    const { assigneeIds, labels, startDate, dueDate, priority, ...rest } = dto;
     const data: Record<string, unknown> = { ...rest };
     if (assigneeIds !== undefined) {
       await this.prisma.cardAssignee.deleteMany({ where: { cardId: id } });
@@ -338,6 +338,9 @@ export class AgileService {
     }
     if (dueDate !== undefined) {
       data.dueDate = dueDate ? new Date(dueDate) : null;
+    }
+    if (priority !== undefined) {
+      data.priority = priority && priority.trim() ? priority.trim() : null;
     }
     const updated = await this.prisma.card.update({
       where: { id },

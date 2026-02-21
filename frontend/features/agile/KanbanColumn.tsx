@@ -22,6 +22,7 @@ type KanbanColumnProps = {
   onLabelsChange?: (cardId: string, labels: string[]) => Promise<void>;
   onStartDateChange?: (cardId: string, date: string | null) => Promise<void>;
   onDueDateChange?: (cardId: string, date: string | null) => Promise<void>;
+  onPriorityChange?: (cardId: string, priority: string | null) => Promise<void>;
   onMoveLeft: () => void;
   onMoveRight: () => void;
   onSetWipLimit: (limit: number | null) => void;
@@ -41,6 +42,7 @@ export function KanbanColumn({
   onLabelsChange,
   onStartDateChange,
   onDueDateChange,
+  onPriorityChange,
   isDragging,
   onMoveLeft,
   onMoveRight,
@@ -94,6 +96,7 @@ export function KanbanColumn({
             onLabelsChange={onLabelsChange}
             onStartDateChange={onStartDateChange}
             onDueDateChange={onDueDateChange}
+            onPriorityChange={onPriorityChange}
           />
         ))}
         <CreateCardForm columnId={column.id} onSubmit={onAddCard} />

@@ -91,6 +91,7 @@ model Card {
   startDate    DateTime?
   dueDate      DateTime?
   labels       Json?
+  priority     String?
   createdById  String?
   createdBy    User?     @relation("CardCreator", fields: [createdById], references: [id], onDelete: SetNull)
   assignees    CardAssignee[]

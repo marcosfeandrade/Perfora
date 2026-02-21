@@ -24,6 +24,7 @@ export interface Card {
   startDate?: string | null;
   dueDate?: string | null;
   labels?: string[] | null;
+  priority?: string | null;
   createdBy?: { id: string; email: string; name: string | null } | null;
   assignees?: CardAssignee[];
 }
