@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime @default(now())
+  workspaces   Workspace[]
+  cardAssignments CardAssignee[]
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  boards    Board[]
+}
+
+model Board {
+  id         String   @id @default(cuid())
+  workspaceId String
+  workspace  Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name       String
+  columns    Column[]
+}
+
+model Column {
+  id       String  @id @default(cuid())
+  boardId  String
+  board    Board   @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  name     String
+  order    Int
+  wipLimit Int?
+  cards    Card[]
+}
+
+model Card {
+  id          String   @id @default(cuid())
+  columnId    String
+  column      Column   @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  order       Int
+  assignees   CardAssignee[]
+}
+
+model CardAssignee {
+  cardId String
+  userId String
+  card   Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([cardId, userId])
+}
