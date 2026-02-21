@@ -2,6 +2,8 @@ export interface Workspace {
   id: string;
   name: string;
   createdAt: string;
+  plannerTaskPrefix?: string | null;
+  notesSettings?: Record<string, unknown> | null;
 }
 
 export interface CardAssignee {
@@ -14,6 +16,7 @@ export interface Card {
   id: string;
   columnId: string;
   title: string;
+  code?: string | null;
   description: string | null;
   order: number;
   assignees?: CardAssignee[];

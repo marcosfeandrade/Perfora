@@ -18,14 +18,16 @@ model User {
 }
 
 model Workspace {
-  id        String   @id @default(cuid())
-  name      String
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  createdAt DateTime @default(now())
-  boards    Board[]
-  folders   NoteFolder[]
-  notes     Note[]
+  id                 String   @id @default(cuid())
+  name               String
+  userId             String?
+  user               User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt          DateTime @default(now())
+  plannerTaskPrefix  String?
+  notesSettings      Json?
+  boards             Board[]
+  folders            NoteFolder[]
+  notes              Note[]
 }
 
 model NoteFolder {
@@ -78,6 +80,7 @@ model Card {
   columnId    String
   column      Column   @relation(fields: [columnId], references: [id], onDelete: Cascade)
   title       String
+  code        String?
   description String?
   order       Int
   assignees   CardAssignee[]

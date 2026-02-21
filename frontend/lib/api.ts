@@ -28,13 +28,22 @@ async function request<T>(
       const json = JSON.parse(text);
       throw new Error(json.message || text || `HTTP ${res.status}`);
     } catch (e) {
-      if (e instanceof Error && e.message !== text) throw e;
-      throw new Error(text || `HTTP ${res.status}`);
+      const isParseError =
+        e instanceof SyntaxError ||
+        (e instanceof Error && e.message.includes("Unexpected token"));
+      if (isParseError) {
+        throw new Error(text || `HTTP ${res.status}`);
+      }
+      throw e;
     }
   }
   const text = await res.text();
   if (!text || text.trim() === "") return undefined as T;
-  return JSON.parse(text) as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error(text || "Resposta inválida do servidor");
+  }
 }
 
 export const api = {
@@ -43,7 +52,7 @@ export const api = {
     get: (id: string) => request<Workspace>(`/workspaces/${id}`),
     create: (body: { name: string }) =>
       request<Workspace>("/workspaces", { method: "POST", body: JSON.stringify(body) }),
-    update: (id: string, body: { name?: string }) =>
+    update: (id: string, body: { name?: string; plannerTaskPrefix?: string | null; notesSettings?: Record<string, unknown> | null }) =>
       request<Workspace>(`/workspaces/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
     delete: (id: string) =>
       request<void>(`/workspaces/${id}`, { method: "DELETE" }),

@@ -107,6 +107,9 @@ export function CardDetailModal({
               {card.title}
             </DialogTitle>
           )}
+          {card.code && (
+            <p className="text-muted-foreground text-sm -mt-1 px-2">{card.code}</p>
+          )}
         </DialogHeader>
         {isEditingDesc ? (
           <textarea

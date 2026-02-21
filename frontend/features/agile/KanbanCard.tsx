@@ -77,6 +77,9 @@ export function KanbanCard({
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <p className="text-foreground font-medium text-sm">{card.title}</p>
+            {card.code && (
+              <p className="text-muted-foreground text-xs mt-0.5">{card.code}</p>
+            )}
             {card.description ? (
               <p className="text-muted-foreground text-xs mt-1 line-clamp-2 whitespace-pre-line break-words">
                 {card.description}

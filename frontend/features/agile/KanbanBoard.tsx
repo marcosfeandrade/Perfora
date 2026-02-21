@@ -256,6 +256,9 @@ export function KanbanBoard({
           {activeCard ? (
             <Card className="rounded-lg border-2 border-primary p-3 cursor-grabbing shadow-xl w-[272px] opacity-95">
               <p className="text-foreground font-medium text-sm">{activeCard.title}</p>
+              {activeCard.code && (
+                <p className="text-muted-foreground text-xs mt-0.5">{activeCard.code}</p>
+              )}
               {activeCard.description ? (
                 <p className="text-muted-foreground text-xs mt-1 line-clamp-2 whitespace-pre-line break-words">
                   {activeCard.description}

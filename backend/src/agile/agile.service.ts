@@ -80,14 +80,21 @@ export class AgileService {
     });
   }
 
-  createColumn(dto: CreateColumnDto) {
-    return this.prisma.column.create({
+  async createColumn(dto: CreateColumnDto) {
+    const column = await this.prisma.column.create({
       data: {
         name: dto.name,
         order: dto.order,
         boardId: dto.boardId,
       },
     });
+    const board = await this.prisma.board.findUniqueOrThrow({
+      where: { id: dto.boardId },
+      select: { workspaceId: true },
+    });
+    const fullBoard = await this.findBoard(dto.boardId);
+    this.agileGateway.broadcastBoardUpdate(board.workspaceId, fullBoard);
+    return column;
   }
 
   async updateColumn(id: string, dto: UpdateColumnDto) {
@@ -177,11 +184,30 @@ export class AgileService {
     this.agileGateway.broadcastBoardUpdate(board.workspaceId, fullBoard);
   }
 
-  createCard(dto: CreateCardDto) {
+  async createCard(dto: CreateCardDto) {
     const { assigneeIds, ...rest } = dto;
-    return this.prisma.card.create({
+    const title = rest.title.trim() || 'Nova task';
+    let code: string | null = null;
+
+    const column = await this.prisma.column.findUniqueOrThrow({
+      where: { id: dto.columnId },
+      include: { board: { include: { workspace: true } } },
+    });
+    const workspace = column.board.workspace;
+
+    if (workspace.plannerTaskPrefix?.trim()) {
+      const prefix = workspace.plannerTaskPrefix.trim().toUpperCase();
+      const count = await this.prisma.card.count({
+        where: { column: { board: { workspaceId: workspace.id } } },
+      });
+      code = `${prefix}-${count + 1}`;
+    }
+
+    const card = await this.prisma.card.create({
       data: {
         ...rest,
+        title,
+        code,
         description: rest.description ?? null,
         assignees: assigneeIds?.length
           ? { create: assigneeIds.map((userId) => ({ userId })) }
@@ -193,6 +219,8 @@ export class AgileService {
         },
       },
     });
+    await this.broadcastBoardForColumn(dto.columnId);
+    return card;
   }
 
   async updateCard(id: string, dto: UpdateCardDto) {
@@ -218,10 +246,15 @@ export class AgileService {
     return updated;
   }
 
-  removeCard(id: string) {
-    return this.prisma.card.delete({
+  async removeCard(id: string) {
+    const card = await this.prisma.card.findUniqueOrThrow({
+      where: { id },
+      select: { columnId: true },
+    });
+    await this.prisma.card.delete({
       where: { id },
     });
+    await this.broadcastBoardForColumn(card.columnId);
   }
 
   async moveCard(cardId: string, dto: MoveCardDto) {

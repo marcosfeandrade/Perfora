@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../core/prisma/prisma.service.js';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto.js';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto.js';
@@ -26,9 +27,15 @@ export class WorkspaceService {
   }
 
   update(id: string, updateWorkspaceDto: UpdateWorkspaceDto) {
+    const data: Prisma.WorkspaceUpdateInput = {};
+    if (updateWorkspaceDto.name !== undefined) data.name = updateWorkspaceDto.name;
+    if (updateWorkspaceDto.plannerTaskPrefix !== undefined)
+      data.plannerTaskPrefix = updateWorkspaceDto.plannerTaskPrefix;
+    if (updateWorkspaceDto.notesSettings !== undefined)
+      data.notesSettings = updateWorkspaceDto.notesSettings as Prisma.InputJsonValue;
     return this.prisma.workspace.update({
       where: { id },
-      data: updateWorkspaceDto,
+      data,
     });
   }
 
