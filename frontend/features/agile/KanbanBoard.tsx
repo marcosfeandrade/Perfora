@@ -90,15 +90,7 @@ export function KanbanBoard({
   const handleAddColumn = useCallback(
     (name: string) => {
       const order = board.columns.length;
-      return api.agile.columns
-        .create({ name, order, boardId })
-        .then((col) => {
-          const newColumn = { ...col, cards: col.cards ?? [] };
-          setBoard((prev) => ({
-            ...prev,
-            columns: [...prev.columns, newColumn],
-          }));
-        });
+      return api.agile.columns.create({ name, order, boardId });
     },
     [board.columns.length, boardId]
   );
@@ -197,18 +189,7 @@ export function KanbanBoard({
     (columnId: string, title: string) => {
       const column = board.columns.find((c) => c.id === columnId);
       const order = column ? (column.cards?.length ?? 0) : 0;
-      return api.agile.cards
-        .create({ title, order, columnId })
-        .then((card) => {
-          setBoard((prev) => ({
-            ...prev,
-            columns: prev.columns.map((col) =>
-              col.id === columnId
-                ? { ...col, cards: [...(col.cards ?? []), card] }
-                : col
-            ),
-          }));
-        });
+      return api.agile.cards.create({ title, order, columnId });
     },
     [board.columns]
   );
