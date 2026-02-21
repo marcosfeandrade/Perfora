@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import type { Column as ColumnType } from "@/lib/types";
 import {
   DropdownMenu,
@@ -62,6 +62,7 @@ export function ColumnMenu({
             size="icon"
             className="size-8"
             aria-label="Opções da coluna"
+            onPointerDown={(e) => e.stopPropagation()}
           >
             <MoreVertical className="size-4" />
           </Button>

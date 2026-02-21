@@ -405,6 +405,7 @@ function FolderTree({
                 workspaceId={workspaceId}
                 activeNoteId={activeNoteId}
                 showPin
+                alignWithFolder
                 onRename={onRenameNote}
                 onDelete={onDeleteNote}
               />
@@ -422,6 +423,7 @@ function FolderTree({
                     note={n}
                     workspaceId={workspaceId}
                     activeNoteId={activeNoteId}
+                    alignWithFolder
                     onRename={onRenameNote}
                     onDelete={onDeleteNote}
                   />

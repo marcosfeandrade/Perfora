@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import type { Column as ColumnType } from "@/lib/types";
 import { KanbanCard } from "./KanbanCard";
@@ -40,14 +39,11 @@ export function KanbanColumn({
   onSetWipLimit,
   onDelete,
 }: KanbanColumnProps) {
-  const [hover, setHover] = useState(false);
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
 
   return (
     <Card
       ref={setNodeRef}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
       className={cn(
         "flex-shrink-0 w-72 flex flex-col overflow-hidden transition-all duration-200",
         isOver && "ring-2 ring-primary/30 border-primary/50"
@@ -62,8 +58,7 @@ export function KanbanColumn({
             </p>
           )}
         </div>
-        {hover && (
-          <ColumnMenu
+        <ColumnMenu
             column={column}
             canMoveLeft={canMoveLeft}
             canMoveRight={canMoveRight}
@@ -72,7 +67,6 @@ export function KanbanColumn({
             onSetWipLimit={onSetWipLimit}
             onDelete={onDelete}
           />
-        )}
       </CardHeader>
       <CardContent
         className={cn(

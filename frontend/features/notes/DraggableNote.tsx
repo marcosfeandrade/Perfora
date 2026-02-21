@@ -19,6 +19,7 @@ type DraggableNoteProps = {
   workspaceId: string;
   activeNoteId: string | null;
   showPin?: boolean;
+  alignWithFolder?: boolean;
   onRename?: (id: string, title: string) => void;
   onDelete?: (id: string) => void;
 };
@@ -28,6 +29,7 @@ export function DraggableNote({
   workspaceId,
   activeNoteId,
   showPin = false,
+  alignWithFolder = false,
   onRename,
   onDelete,
 }: DraggableNoteProps) {
@@ -61,8 +63,12 @@ export function DraggableNote({
       <div
         {...listeners}
         {...attributes}
-        className="flex items-center gap-2 flex-1 min-w-0 px-2 py-1.5 cursor-grab active:cursor-grabbing"
+        className={cn(
+          "flex items-center gap-2 flex-1 min-w-0 py-1.5 cursor-grab active:cursor-grabbing",
+          alignWithFolder ? "pl-0 pr-2" : "px-2"
+        )}
       >
+        {alignWithFolder && <span className="w-4 shrink-0" aria-hidden />}
         {showPin || note.isPinned ? (
           <Pin className="size-3.5 shrink-0" />
         ) : (
