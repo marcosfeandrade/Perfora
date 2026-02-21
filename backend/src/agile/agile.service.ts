@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../core/prisma/prisma.service.js';
 import { AgileGateway } from './agile.gateway.js';
 import { CreateBoardDto } from './dto/create-board.dto.js';
@@ -33,6 +34,7 @@ export class AgileService {
         assignees: {
           include: { user: { select: { id: true, email: true, name: true } } },
         },
+        createdBy: { select: { id: true, email: true, name: true } },
       },
     });
   }
@@ -50,6 +52,7 @@ export class AgileService {
                 assignees: {
                   include: { user: { select: { id: true, email: true, name: true } } },
                 },
+                createdBy: { select: { id: true, email: true, name: true } },
               },
             },
           },
@@ -71,6 +74,7 @@ export class AgileService {
                 assignees: {
                   include: { user: { select: { id: true, email: true, name: true } } },
                 },
+                createdBy: { select: { id: true, email: true, name: true } },
               },
             },
           },
@@ -197,9 +201,23 @@ export class AgileService {
   }
 
   async createCard(dto: CreateCardDto) {
-    const { assigneeIds, columnId, workspaceId, ...rest } = dto;
+    const { assigneeIds, columnId, workspaceId, createdById, labels, ...rest } = dto;
     const title = rest.title.trim() || 'Nova task';
     let code: string | null = null;
+
+    const createData = (wsId: string, colId: string | null, ord: number): Prisma.CardUncheckedCreateInput => ({
+      title,
+      code,
+      workspaceId: wsId,
+      columnId: colId,
+      description: rest.description ?? null,
+      order: ord,
+      createdById: createdById ?? null,
+      labels: labels?.length ? labels : undefined,
+      assignees: assigneeIds?.length
+        ? { create: assigneeIds.map((userId) => ({ userId })) }
+        : undefined,
+    });
 
     if (columnId) {
       const column = await this.prisma.column.findUniqueOrThrow({
@@ -216,24 +234,28 @@ export class AgileService {
         code = `${prefix}-${count + 1}`;
       }
 
+      const colCards = await this.prisma.card.count({ where: { columnId } });
       const card = await this.prisma.card.create({
-        data: {
-          ...rest,
-          title,
-          code,
-          columnId,
-          workspaceId: column.board.workspaceId,
-          description: rest.description ?? null,
-          assignees: assigneeIds?.length
-            ? { create: assigneeIds.map((userId) => ({ userId })) }
-            : undefined,
-        },
+        data: createData(column.board.workspaceId, columnId, Math.min(rest.order, colCards)),
         include: {
           assignees: {
             include: { user: { select: { id: true, email: true, name: true } } },
           },
+          createdBy: { select: { id: true, email: true, name: true } },
         },
       });
+      if (labels?.length) {
+        const ws = await this.prisma.workspace.findUniqueOrThrow({
+          where: { id: workspace.id },
+          select: { labels: true },
+        });
+        const existing = (ws.labels as string[]) ?? [];
+        const merged = [...new Set([...existing, ...labels])];
+        await this.prisma.workspace.update({
+          where: { id: workspace.id },
+          data: { labels: merged },
+        });
+      }
       await this.broadcastBoardForColumn(columnId);
       return card;
     }
@@ -259,30 +281,33 @@ export class AgileService {
     });
 
     const card = await this.prisma.card.create({
-      data: {
-        ...rest,
-        title,
-        code,
-        workspaceId,
-        columnId: null,
-        description: rest.description ?? null,
-        order: backlogCount,
-        assignees: assigneeIds?.length
-          ? { create: assigneeIds.map((userId) => ({ userId })) }
-          : undefined,
-      },
+      data: createData(workspaceId, null, backlogCount),
       include: {
         assignees: {
           include: { user: { select: { id: true, email: true, name: true } } },
         },
+        createdBy: { select: { id: true, email: true, name: true } },
       },
     });
+    if (labels?.length) {
+      const ws = await this.prisma.workspace.findUniqueOrThrow({
+        where: { id: workspaceId },
+        select: { labels: true },
+      });
+      const existing = (ws.labels as string[]) ?? [];
+      const merged = [...new Set([...existing, ...labels])];
+      await this.prisma.workspace.update({
+        where: { id: workspaceId },
+        data: { labels: merged },
+      });
+    }
     this.agileGateway.broadcastBacklogUpdate(workspaceId);
     return card;
   }
 
   async updateCard(id: string, dto: UpdateCardDto) {
-    const { assigneeIds, ...rest } = dto;
+    const { assigneeIds, labels, startDate, dueDate, ...rest } = dto;
+    const data: Record<string, unknown> = { ...rest };
     if (assigneeIds !== undefined) {
       await this.prisma.cardAssignee.deleteMany({ where: { cardId: id } });
       if (assigneeIds.length > 0) {
@@ -291,13 +316,37 @@ export class AgileService {
         });
       }
     }
+    if (labels !== undefined) {
+      data.labels = labels;
+      const card = await this.prisma.card.findUniqueOrThrow({
+        where: { id },
+        select: { workspaceId: true },
+      });
+      const ws = await this.prisma.workspace.findUniqueOrThrow({
+        where: { id: card.workspaceId },
+        select: { labels: true },
+      });
+      const existing = (ws.labels as string[]) ?? [];
+      const merged = [...new Set([...existing, ...labels])];
+      await this.prisma.workspace.update({
+        where: { id: card.workspaceId },
+        data: { labels: merged },
+      });
+    }
+    if (startDate !== undefined) {
+      data.startDate = startDate ? new Date(startDate) : null;
+    }
+    if (dueDate !== undefined) {
+      data.dueDate = dueDate ? new Date(dueDate) : null;
+    }
     const updated = await this.prisma.card.update({
       where: { id },
-      data: rest,
+      data,
       include: {
         assignees: {
           include: { user: { select: { id: true, email: true, name: true } } },
         },
+        createdBy: { select: { id: true, email: true, name: true } },
       },
     });
     if (updated.columnId) {

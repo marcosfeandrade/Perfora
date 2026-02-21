@@ -97,6 +97,23 @@ function DraggableCard({
         {card.code && (
           <p className="text-muted-foreground text-xs mt-0.5">{card.code}</p>
         )}
+        {(card.labels as string[])?.length ? (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {(card.labels as string[]).slice(0, 3).map((l) => (
+              <span
+                key={l}
+                className="inline-flex px-1.5 py-0.5 rounded text-[10px] bg-primary/10 text-primary"
+              >
+                {l}
+              </span>
+            ))}
+            {(card.labels as string[]).length > 3 && (
+              <span className="text-[10px] text-muted-foreground">
+                +{(card.labels as string[]).length - 3}
+              </span>
+            )}
+          </div>
+        ) : null}
       </div>
       {assignees.length > 0 && (
         <div className="flex gap-0.5 shrink-0">
@@ -279,8 +296,13 @@ export function BacklogView({
   const [isAdding, setIsAdding] = useState(false);
   const [activeCard, setActiveCard] = useState<Card | null>(null);
   const [editingCard, setEditingCard] = useState<Card | null>(null);
+  const [allUsers, setAllUsers] = useState<{ id: string; email: string; name: string | null }[]>([]);
 
   const skipClickRef = useRef(false);
+
+  useEffect(() => {
+    api.auth.users().then(setAllUsers).catch(() => setAllUsers([]));
+  }, []);
 
   const refresh = useCallback(async () => {
     const [cards, boardsList] = await Promise.all([
@@ -409,6 +431,44 @@ export function BacklogView({
     [refresh]
   );
 
+  const handleAssigneesChange = useCallback(
+    async (cardId: string, assigneeIds: string[]) => {
+      const updated = await api.agile.cards.update(cardId, { assigneeIds });
+      const raw = (updated as { assignees?: { user?: { id: string; email: string; name: string | null } }[] }).assignees ?? [];
+      const assignees = raw.map((a) => ("user" in a && a.user ? a.user : a)) as { id: string; email: string; name: string | null }[];
+      await refresh();
+      setEditingCard((prev) => (prev?.id === cardId ? { ...prev, assignees } : prev));
+    },
+    [refresh]
+  );
+
+  const handleLabelsChange = useCallback(
+    async (cardId: string, labels: string[]) => {
+      await api.agile.cards.update(cardId, { labels });
+      await refresh();
+      setEditingCard((prev) => (prev?.id === cardId ? { ...prev, labels } : prev));
+    },
+    [refresh]
+  );
+
+  const handleStartDateChange = useCallback(
+    async (cardId: string, date: string | null) => {
+      await api.agile.cards.update(cardId, { startDate: date ?? undefined });
+      await refresh();
+      setEditingCard((prev) => (prev?.id === cardId ? { ...prev, startDate: date } : prev));
+    },
+    [refresh]
+  );
+
+  const handleDueDateChange = useCallback(
+    async (cardId: string, date: string | null) => {
+      await api.agile.cards.update(cardId, { dueDate: date ?? undefined });
+      await refresh();
+      setEditingCard((prev) => (prev?.id === cardId ? { ...prev, dueDate: date } : prev));
+    },
+    [refresh]
+  );
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
@@ -517,6 +577,23 @@ export function BacklogView({
                 {activeCard.code && (
                   <p className="text-muted-foreground text-xs mt-0.5">{activeCard.code}</p>
                 )}
+                {((activeCard.labels as string[]) ?? []).length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {((activeCard.labels as string[]) ?? []).slice(0, 3).map((l) => (
+                      <span
+                        key={l}
+                        className="inline-flex px-1.5 py-0.5 rounded text-[10px] bg-primary/10 text-primary"
+                      >
+                        {l}
+                      </span>
+                    ))}
+                    {((activeCard.labels as string[]) ?? []).length > 3 && (
+                      <span className="text-[10px] text-muted-foreground">
+                        +{((activeCard.labels as string[]) ?? []).length - 3}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
               {(activeCard.assignees ?? []).length > 0 && (
                 <div className="flex gap-0.5 shrink-0">
@@ -541,9 +618,15 @@ export function BacklogView({
       {editingCard && (
         <CardDetailModal
           card={editingCard}
+          workspaceId={workspaceId}
+          allUsers={allUsers}
           onClose={() => setEditingCard(null)}
           onTitleChange={handleTitleChange}
           onDescriptionChange={handleDescriptionChange}
+          onAssigneesChange={handleAssigneesChange}
+          onLabelsChange={handleLabelsChange}
+          onStartDateChange={handleStartDateChange}
+          onDueDateChange={handleDueDateChange}
         />
       )}
     </DndContext>

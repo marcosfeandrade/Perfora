@@ -15,6 +15,7 @@ model User {
   createdAt    DateTime @default(now())
   workspaces   Workspace[]
   cardAssignments CardAssignee[]
+  createdCards   Card[]   @relation("CardCreator")
 }
 
 model Workspace {
@@ -25,6 +26,7 @@ model Workspace {
   createdAt          DateTime @default(now())
   plannerTaskPrefix  String?
   notesSettings      Json?
+  labels             Json?
   boards             Board[]
   folders            NoteFolder[]
   notes              Note[]
@@ -86,6 +88,11 @@ model Card {
   code         String?
   description  String?
   order        Int
+  startDate    DateTime?
+  dueDate      DateTime?
+  labels       Json?
+  createdById  String?
+  createdBy    User?     @relation("CardCreator", fields: [createdById], references: [id], onDelete: SetNull)
   assignees    CardAssignee[]
 }
 

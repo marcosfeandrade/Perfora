@@ -98,6 +98,9 @@ export const api = {
         description?: string;
         order?: number;
         assigneeIds?: string[];
+        startDate?: string | null;
+        dueDate?: string | null;
+        labels?: string[];
       }) =>
         request<Card>(`/agile/cards/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
       delete: (id: string) =>

@@ -29,4 +29,13 @@ export class CreateCardDto {
   @IsArray()
   @IsString({ each: true })
   assigneeIds?: string[];
+
+  @IsOptional()
+  @IsString()
+  createdById?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  labels?: string[];
 }

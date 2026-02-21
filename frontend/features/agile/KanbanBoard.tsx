@@ -167,6 +167,58 @@ export function KanbanBoard({
     []
   );
 
+  const handleLabelsChange = useCallback(
+    async (cardId: string, labels: string[]) => {
+      const updated = await api.agile.cards.update(cardId, { labels });
+      setBoard((prev) => ({
+        ...prev,
+        columns: prev.columns.map((col) => ({
+          ...col,
+          cards: (col.cards ?? []).map((c) =>
+            c.id === cardId ? { ...c, labels: updated.labels ?? null } : c
+          ),
+        })),
+      }));
+    },
+    []
+  );
+
+  const handleStartDateChange = useCallback(
+    async (cardId: string, date: string | null) => {
+      const updated = await api.agile.cards.update(cardId, {
+        startDate: date ?? undefined,
+      });
+      setBoard((prev) => ({
+        ...prev,
+        columns: prev.columns.map((col) => ({
+          ...col,
+          cards: (col.cards ?? []).map((c) =>
+            c.id === cardId ? { ...c, startDate: updated.startDate ?? null } : c
+          ),
+        })),
+      }));
+    },
+    []
+  );
+
+  const handleDueDateChange = useCallback(
+    async (cardId: string, date: string | null) => {
+      const updated = await api.agile.cards.update(cardId, {
+        dueDate: date ?? undefined,
+      });
+      setBoard((prev) => ({
+        ...prev,
+        columns: prev.columns.map((col) => ({
+          ...col,
+          cards: (col.cards ?? []).map((c) =>
+            c.id === cardId ? { ...c, dueDate: updated.dueDate ?? null } : c
+          ),
+        })),
+      }));
+    },
+    []
+  );
+
   const handleAssigneesChange = useCallback(
     async (cardId: string, assigneeIds: string[]) => {
       const updated = await api.agile.cards.update(cardId, { assigneeIds });
@@ -218,11 +270,15 @@ export function KanbanBoard({
               canMoveLeft={index > 0}
               canMoveRight={index < board.columns.length - 1}
               allUsers={allUsers}
+              workspaceId={workspaceId}
               isDragging={!!activeCard}
               onAddCard={(title) => handleAddCard(col.id, title)}
               onAssigneesChange={handleAssigneesChange}
               onTitleChange={handleTitleChange}
               onDescriptionChange={handleDescriptionChange}
+              onLabelsChange={handleLabelsChange}
+              onStartDateChange={handleStartDateChange}
+              onDueDateChange={handleDueDateChange}
               onMoveLeft={() => handleMoveColumnLeft(col.id)}
               onMoveRight={() => handleMoveColumnRight(col.id)}
               onSetWipLimit={(limit) => handleSetWipLimit(col.id, limit)}
@@ -240,11 +296,23 @@ export function KanbanBoard({
               {activeCard.code && (
                 <p className="text-muted-foreground text-xs mt-0.5">{activeCard.code}</p>
               )}
-              {activeCard.description ? (
-                <p className="text-muted-foreground text-xs mt-1 line-clamp-2 whitespace-pre-line break-words">
-                  {activeCard.description}
-                </p>
-              ) : null}
+              {((activeCard.labels as string[]) ?? []).length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {((activeCard.labels as string[]) ?? []).slice(0, 3).map((l) => (
+                    <span
+                      key={l}
+                      className="inline-flex px-1.5 py-0.5 rounded text-[10px] bg-primary/10 text-primary"
+                    >
+                      {l}
+                    </span>
+                  ))}
+                  {((activeCard.labels as string[]) ?? []).length > 3 && (
+                    <span className="text-[10px] text-muted-foreground">
+                      +{((activeCard.labels as string[]) ?? []).length - 3}
+                    </span>
+                  )}
+                </div>
+              )}
               {(activeCard.assignees ?? []).length > 0 && (
                 <div className="flex gap-0.5 mt-2">
                   {(activeCard.assignees ?? []).slice(0, 3).map((a: { id: string; name?: string | null; email?: string }) => (

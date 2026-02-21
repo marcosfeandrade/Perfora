@@ -13,11 +13,15 @@ type KanbanColumnProps = {
   canMoveLeft: boolean;
   canMoveRight: boolean;
   allUsers: { id: string; email: string; name: string | null }[];
+  workspaceId: string;
   isDragging?: boolean;
   onAddCard: (title: string) => void | Promise<unknown>;
   onAssigneesChange: (cardId: string, assigneeIds: string[]) => Promise<void>;
   onTitleChange?: (cardId: string, title: string) => Promise<void>;
   onDescriptionChange?: (cardId: string, description: string) => Promise<void>;
+  onLabelsChange?: (cardId: string, labels: string[]) => Promise<void>;
+  onStartDateChange?: (cardId: string, date: string | null) => Promise<void>;
+  onDueDateChange?: (cardId: string, date: string | null) => Promise<void>;
   onMoveLeft: () => void;
   onMoveRight: () => void;
   onSetWipLimit: (limit: number | null) => void;
@@ -29,10 +33,14 @@ export function KanbanColumn({
   canMoveLeft,
   canMoveRight,
   allUsers,
+  workspaceId,
   onAddCard,
   onAssigneesChange,
   onTitleChange,
   onDescriptionChange,
+  onLabelsChange,
+  onStartDateChange,
+  onDueDateChange,
   isDragging,
   onMoveLeft,
   onMoveRight,
@@ -78,10 +86,14 @@ export function KanbanColumn({
           <KanbanCard
             key={card.id}
             card={card}
+            workspaceId={workspaceId}
             allUsers={allUsers}
             onAssigneesChange={onAssigneesChange}
             onTitleChange={onTitleChange}
             onDescriptionChange={onDescriptionChange}
+            onLabelsChange={onLabelsChange}
+            onStartDateChange={onStartDateChange}
+            onDueDateChange={onDueDateChange}
           />
         ))}
         <CreateCardForm columnId={column.id} onSubmit={onAddCard} />

@@ -10,10 +10,14 @@ import { cn } from "@/lib/utils";
 
 type KanbanCardProps = {
   card: CardType;
+  workspaceId: string;
   allUsers: { id: string; email: string; name: string | null }[];
   onAssigneesChange: (cardId: string, assigneeIds: string[]) => Promise<void>;
   onTitleChange?: (cardId: string, title: string) => Promise<void>;
   onDescriptionChange?: (cardId: string, description: string) => Promise<void>;
+  onLabelsChange?: (cardId: string, labels: string[]) => Promise<void>;
+  onStartDateChange?: (cardId: string, date: string | null) => Promise<void>;
+  onDueDateChange?: (cardId: string, date: string | null) => Promise<void>;
 };
 
 function normalizeAssignees(
@@ -28,10 +32,14 @@ function normalizeAssignees(
 
 export function KanbanCard({
   card,
+  workspaceId,
   allUsers,
   onAssigneesChange,
   onTitleChange,
   onDescriptionChange,
+  onLabelsChange,
+  onStartDateChange,
+  onDueDateChange,
 }: KanbanCardProps) {
   const { setNodeRef: setDroppableRef } = useDroppable({ id: card.id });
   const {
@@ -80,10 +88,22 @@ export function KanbanCard({
             {card.code && (
               <p className="text-muted-foreground text-xs mt-0.5">{card.code}</p>
             )}
-            {card.description ? (
-              <p className="text-muted-foreground text-xs mt-1 line-clamp-2 whitespace-pre-line break-words">
-                {card.description}
-              </p>
+            {(card.labels as string[])?.length ? (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {(card.labels as string[]).slice(0, 3).map((l) => (
+                  <span
+                    key={l}
+                    className="inline-flex px-1.5 py-0.5 rounded text-[10px] bg-primary/10 text-primary"
+                  >
+                    {l}
+                  </span>
+                ))}
+                {(card.labels as string[]).length > 3 && (
+                  <span className="text-[10px] text-muted-foreground">
+                    +{(card.labels as string[]).length - 3}
+                  </span>
+                )}
+              </div>
             ) : null}
           </div>
           <div
@@ -114,9 +134,15 @@ export function KanbanCard({
       {modalOpen && (
         <CardDetailModal
           card={card}
+          workspaceId={workspaceId}
+          allUsers={allUsers}
           onClose={() => setModalOpen(false)}
           onTitleChange={onTitleChange}
           onDescriptionChange={onDescriptionChange}
+          onAssigneesChange={onAssigneesChange}
+          onLabelsChange={onLabelsChange}
+          onStartDateChange={onStartDateChange}
+          onDueDateChange={onDueDateChange}
         />
       )}
     </>
