@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import {
   DndContext,
   DragEndEvent,
+  DragStartEvent,
+  DragOverlay,
   PointerSensor,
   useSensor,
   useSensors,
-  closestCenter,
+  pointerWithin,
   useDraggable,
   useDroppable,
 } from "@dnd-kit/core";
@@ -19,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Plus } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { CardDetailModal } from "./CardDetailModal";
 import {
   joinWorkspaceRoom,
   leaveWorkspaceRoom,
@@ -62,14 +65,15 @@ function DraggableCard({
   boardId,
   isBacklog,
   skipClickRef,
+  onCardClick,
 }: {
   card: Card;
   workspaceId: string;
   boardId?: string;
   isBacklog: boolean;
   skipClickRef?: React.MutableRefObject<boolean>;
+  onCardClick?: (card: Card) => void;
 }) {
-  const router = useRouter();
   const {
     attributes,
     listeners,
@@ -111,29 +115,27 @@ function DraggableCard({
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
-      if (isBacklog) return;
       if (skipClickRef?.current) {
         e.preventDefault();
         e.stopPropagation();
         skipClickRef.current = false;
         return;
       }
-      router.push(`/workspace/${workspaceId}/planner/board/${boardId}`);
+      onCardClick?.(card);
     },
-    [isBacklog, workspaceId, boardId, router, skipClickRef]
+    [card, onCardClick, skipClickRef]
   );
 
   const cardEl = (
     <CardUI
       ref={setNodeRef}
-      style={style}
+      style={isDragging ? { visibility: "hidden" } : style}
       {...listeners}
       {...attributes}
-      onClick={!isBacklog ? handleClick : undefined}
+      onClick={onCardClick ? handleClick : undefined}
       className={cn(
         "p-3 cursor-grab active:cursor-grabbing transition-all",
-        isDragging && "opacity-50 shadow-lg",
-        !isBacklog && "cursor-pointer"
+        onCardClick && "cursor-pointer"
       )}
     >
       {content}
@@ -275,6 +277,8 @@ export function BacklogView({
   const [boardsState, setBoardsState] = useState(boards);
   const [newTitle, setNewTitle] = useState("");
   const [isAdding, setIsAdding] = useState(false);
+  const [activeCard, setActiveCard] = useState<Card | null>(null);
+  const [editingCard, setEditingCard] = useState<Card | null>(null);
 
   const skipClickRef = useRef(false);
 
@@ -315,12 +319,24 @@ export function BacklogView({
     }
   };
 
+  const handleDragStart = useCallback(
+    (event: DragStartEvent) => {
+      const drag = parseDragId(String(event.active.id));
+      if (!drag) return;
+      const cardFromBacklog = backlog.find((c) => c.id === drag.id);
+      const cardFromBoard = findCardInBoards(boardsState, drag.id);
+      setActiveCard(cardFromBacklog ?? cardFromBoard ?? null);
+    },
+    [backlog, boardsState]
+  );
+
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
       skipClickRef.current = true;
 
       const { active, over } = event;
       if (!over) {
+        setActiveCard(null);
         setTimeout(() => { skipClickRef.current = false; }, 150);
         return;
       }
@@ -328,6 +344,7 @@ export function BacklogView({
       const drag = parseDragId(String(active.id));
       const drop = parseDropId(String(over.id));
       if (!drag || !drop) {
+        setActiveCard(null);
         setTimeout(() => { skipClickRef.current = false; }, 150);
         return;
       }
@@ -336,6 +353,7 @@ export function BacklogView({
       const cardFromBoard = findCardInBoards(boardsState, drag.id);
       const card = cardFromBacklog ?? cardFromBoard;
       if (!card) {
+        setActiveCard(null);
         setTimeout(() => { skipClickRef.current = false; }, 150);
         return;
       }
@@ -357,10 +375,38 @@ export function BacklogView({
         await refresh();
       } catch {
         //
+      } finally {
+        setActiveCard(null);
       }
       setTimeout(() => { skipClickRef.current = false; }, 150);
     },
     [backlog, boardsState, refresh]
+  );
+
+  const handleDragCancel = useCallback(() => {
+    setActiveCard(null);
+  }, []);
+
+  const handleCardClick = useCallback((card: Card) => {
+    setEditingCard(card);
+  }, []);
+
+  const handleTitleChange = useCallback(
+    async (cardId: string, title: string) => {
+      await api.agile.cards.update(cardId, { title });
+      await refresh();
+      setEditingCard((prev) => (prev?.id === cardId ? { ...prev, title } : prev));
+    },
+    [refresh]
+  );
+
+  const handleDescriptionChange = useCallback(
+    async (cardId: string, description: string) => {
+      await api.agile.cards.update(cardId, { description });
+      await refresh();
+      setEditingCard((prev) => (prev?.id === cardId ? { ...prev, description } : prev));
+    },
+    [refresh]
   );
 
   const sensors = useSensors(
@@ -370,8 +416,10 @@ export function BacklogView({
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCenter}
+      collisionDetection={pointerWithin}
+      onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
     >
       <div className="space-y-8">
         <section>
@@ -408,6 +456,7 @@ export function BacklogView({
                   workspaceId={workspaceId}
                   isBacklog
                   skipClickRef={skipClickRef}
+                  onCardClick={handleCardClick}
                 />
               ))
             )}
@@ -447,6 +496,7 @@ export function BacklogView({
                             boardId={board.id}
                             isBacklog={false}
                             skipClickRef={skipClickRef}
+                            onCardClick={handleCardClick}
                           />
                         ))}
                       </DroppableColumn>
@@ -458,6 +508,44 @@ export function BacklogView({
           )}
         </section>
       </div>
+      <DragOverlay dropAnimation={null}>
+        {activeCard ? (
+          <CardUI className="p-3 cursor-grabbing shadow-xl w-56 opacity-95 border-2 border-primary">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-foreground font-medium text-sm truncate">{activeCard.title}</p>
+                {activeCard.code && (
+                  <p className="text-muted-foreground text-xs mt-0.5">{activeCard.code}</p>
+                )}
+              </div>
+              {(activeCard.assignees ?? []).length > 0 && (
+                <div className="flex gap-0.5 shrink-0">
+                  {(activeCard.assignees ?? []).slice(0, 3).map((a) => {
+                    const u = a as { user?: { id: string; email: string; name: string | null } };
+                    const assignee = u.user ?? a;
+                    return (
+                      <span
+                        key={assignee.id}
+                        className="size-5 rounded-full bg-primary/20 flex items-center justify-center text-[9px] text-primary"
+                      >
+                        {(assignee.name || assignee.email)?.[0]?.toUpperCase() ?? "?"}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </CardUI>
+        ) : null}
+      </DragOverlay>
+      {editingCard && (
+        <CardDetailModal
+          card={editingCard}
+          onClose={() => setEditingCard(null)}
+          onTitleChange={handleTitleChange}
+          onDescriptionChange={handleDescriptionChange}
+        />
+      )}
     </DndContext>
   );
 }
