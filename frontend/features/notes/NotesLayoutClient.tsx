@@ -70,6 +70,7 @@ export function NotesLayoutClient({
         loading={loading}
         onRefresh={refresh}
         onNoteCreated={handleNoteCreated}
+        onNoteDeleted={handleNoteDeleted}
       />
       <main className="flex-1 min-w-0 overflow-hidden flex flex-col">
         {children}

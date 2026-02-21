@@ -12,6 +12,8 @@ import {
   Pin,
   Search,
   MoreHorizontal,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +50,7 @@ type NotesSidebarProps = {
   loading: boolean;
   onRefresh: () => void;
   onNoteCreated: (note: Note) => void;
+  onNoteDeleted?: () => void;
 };
 
 function collectAllNotes(folders: NoteFolder[], rootNotes: Note[]): Note[] {
@@ -70,6 +73,7 @@ export function NotesSidebar({
   loading,
   onRefresh,
   onNoteCreated,
+  onNoteDeleted,
 }: NotesSidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
@@ -77,6 +81,7 @@ export function NotesSidebar({
   const [createNoteOpen, setCreateNoteOpen] = useState(false);
   const [parentFolderId, setParentFolderId] = useState<string | null>(null);
   const [renameFolderId, setRenameFolderId] = useState<string | null>(null);
+  const [renameNoteId, setRenameNoteId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
   const rootNotes = notes.filter((n) => !n.folderId);
@@ -130,6 +135,29 @@ export function NotesSidebar({
     }
   };
 
+  const handleRenameNote = async () => {
+    if (!renameNoteId || !renameValue.trim()) return;
+    try {
+      await api.notes.notes.update(renameNoteId, { title: renameValue.trim() });
+      onRefresh();
+      setRenameNoteId(null);
+      setRenameValue("");
+    } catch {
+      //
+    }
+  };
+
+  const handleDeleteNote = async (id: string) => {
+    if (!confirm("Deletar esta nota?")) return;
+    try {
+      await api.notes.notes.delete(id);
+      onRefresh();
+      if (activeNoteId === id) onNoteDeleted?.();
+    } catch {
+      //
+    }
+  };
+
   return (
     <>
       <aside className="w-64 flex-shrink-0 border-r border-border bg-card flex flex-col">
@@ -176,19 +204,58 @@ export function NotesSidebar({
                   Resultados
                 </p>
                 {searchResults.map((n) => (
-                  <Link
+                  <div
                     key={n.id}
-                    href={`/workspace/${workspaceId}/notes/${n.id}`}
                     className={cn(
-                      "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-all duration-200",
+                      "flex items-center gap-1 rounded-md group",
                       activeNoteId === n.id
                         ? "bg-primary/10 text-primary border-l-2 border-l-primary"
                         : "text-foreground hover:bg-accent"
                     )}
                   >
-                    <FileText className="size-4 shrink-0" />
-                    <span className="truncate">{n.title}</span>
-                  </Link>
+                    <Link
+                      href={`/workspace/${workspaceId}/notes/${n.id}`}
+                      className={cn(
+                        "flex items-center gap-2 flex-1 min-w-0 px-2 py-1.5 rounded-md text-sm transition-all duration-200",
+                        activeNoteId === n.id
+                          ? "bg-primary/10 text-primary"
+                          : "hover:bg-accent"
+                      )}
+                    >
+                      <FileText className="size-4 shrink-0" />
+                      <span className="truncate">{n.title}</span>
+                    </Link>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-6 opacity-0 group-hover:opacity-100 shrink-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MoreHorizontal className="size-3.5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setRenameNoteId(n.id);
+                            setRenameValue(n.title);
+                          }}
+                        >
+                          <Pencil className="size-4 mr-2" />
+                          Renomear
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleDeleteNote(n.id)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="size-4 mr-2" />
+                          Deletar
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 ))}
               </div>
             ) : (
@@ -207,6 +274,11 @@ export function NotesSidebar({
                     setRenameValue(name);
                   }}
                   onDeleteFolder={handleDeleteFolder}
+                  onRenameNote={(id, title) => {
+                    setRenameNoteId(id);
+                    setRenameValue(title);
+                  }}
+                  onDeleteNote={handleDeleteNote}
                 />
               </NotesSidebarDnd>
             )}
@@ -257,6 +329,28 @@ export function NotesSidebar({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!renameNoteId} onOpenChange={() => setRenameNoteId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Renomear nota</DialogTitle>
+          </DialogHeader>
+          <Input
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            placeholder="Título da nota"
+            onKeyDown={(e) => e.key === "Enter" && handleRenameNote()}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameNoteId(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleRenameNote} disabled={!renameValue.trim()}>
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
@@ -272,9 +366,14 @@ type FolderTreeProps = {
   onCreateNote: (folderId?: string) => void;
   onRenameFolder: (id: string, name: string) => void;
   onDeleteFolder: (id: string) => void;
+  onRenameNote: (id: string, title: string) => void;
+  onDeleteNote: (id: string) => void;
 };
 
-type FolderItemProps = Omit<FolderTreeProps, "folders" | "rootNotes"> & {
+type FolderItemProps = Omit<
+  FolderTreeProps,
+  "folders" | "rootNotes"
+> & {
   folder: NoteFolder;
   depth: number;
 };
@@ -290,6 +389,8 @@ function FolderTree({
   onCreateNote,
   onRenameFolder,
   onDeleteFolder,
+  onRenameNote,
+  onDeleteNote,
 }: FolderTreeProps) {
   return (
     <div className="space-y-0.5">
@@ -304,6 +405,8 @@ function FolderTree({
                 workspaceId={workspaceId}
                 activeNoteId={activeNoteId}
                 showPin
+                onRename={onRenameNote}
+                onDelete={onDeleteNote}
               />
             ))}
           {rootNotes.filter((n) => !n.isPinned).length > 0 && (
@@ -319,6 +422,8 @@ function FolderTree({
                     note={n}
                     workspaceId={workspaceId}
                     activeNoteId={activeNoteId}
+                    onRename={onRenameNote}
+                    onDelete={onDeleteNote}
                   />
                 ))}
             </>
@@ -338,6 +443,8 @@ function FolderTree({
           onCreateNote={onCreateNote}
           onRenameFolder={onRenameFolder}
           onDeleteFolder={onDeleteFolder}
+          onRenameNote={onRenameNote}
+          onDeleteNote={onDeleteNote}
           depth={0}
         />
         </DroppableFolder>
@@ -356,6 +463,8 @@ function FolderItem({
   onCreateNote,
   onRenameFolder,
   onDeleteFolder,
+  onRenameNote,
+  onDeleteNote,
   depth,
 }: FolderItemProps) {
   const isExpanded = expandedFolders.has(folder.id);
@@ -443,6 +552,8 @@ function FolderItem({
                 workspaceId={workspaceId}
                 activeNoteId={activeNoteId}
                 showPin={n.isPinned}
+                onRename={onRenameNote}
+                onDelete={onDeleteNote}
               />
             ))}
           {(folder.children ?? []).map((child) => (
@@ -458,6 +569,8 @@ function FolderItem({
               onCreateNote={onCreateNote}
               onRenameFolder={onRenameFolder}
               onDeleteFolder={onDeleteFolder}
+              onRenameNote={onRenameNote}
+              onDeleteNote={onDeleteNote}
               depth={depth + 1}
             />
             </DroppableFolder>

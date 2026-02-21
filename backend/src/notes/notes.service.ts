@@ -188,6 +188,7 @@ export class NotesService {
       data: dto,
     });
     this.notesGateway.broadcastNoteUpdate(note.workspaceId, note);
+    this.notesGateway.broadcastNotesStructureUpdate(note.workspaceId);
     return note;
   }
 
