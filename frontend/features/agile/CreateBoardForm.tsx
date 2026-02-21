@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export function CreateBoardForm({ workspaceId }: { workspaceId: string }) {
   const router = useRouter();
@@ -32,22 +34,20 @@ export function CreateBoardForm({ workspaceId }: { workspaceId: string }) {
 
   return (
     <form onSubmit={handleSubmit} className="flex gap-2 flex-wrap">
-      <input
+      <Input
         type="text"
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="Nome do board"
-        className="flex-1 min-w-[200px] px-3 py-2 rounded-lg bg-surface border border-white/10 text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary"
+        className="flex-1 min-w-[200px]"
         disabled={loading}
       />
-      <button
-        type="submit"
-        disabled={loading || !name.trim()}
-        className="px-4 py-2 rounded-lg bg-primary text-white font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
-      >
+      <Button type="submit" disabled={loading || !name.trim()}>
         {loading ? "Criando…" : "Criar board"}
-      </button>
-      {error && <p className="w-full text-sm text-red-400 mt-1">{error}</p>}
+      </Button>
+      {error && (
+        <p className="w-full text-sm text-destructive mt-1">{error}</p>
+      )}
     </form>
   );
 }

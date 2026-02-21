@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type WorkspaceTabsProps = {
   workspaceId: string;
@@ -18,33 +19,35 @@ export function WorkspaceTabs({ workspaceId, workspaceName }: WorkspaceTabsProps
   const pathname = usePathname();
   const basePath = `/workspace/${workspaceId}`;
 
-  return (
-    <div className="border-b border-white/10 bg-surface">
-      <div className="px-6 pt-4">
-        <h1 className="text-xl font-semibold text-text">{workspaceName}</h1>
-      </div>
-      <nav className="flex gap-1 px-6 mt-4">
-        {TABS.map(({ href, label }) => {
-          const fullPath = href ? `${basePath}${href}` : basePath;
-          const isActive =
-            pathname === fullPath ||
-            (href && pathname?.startsWith(fullPath));
+  const activeTab = TABS.find(({ href }) => {
+    const fullPath = href ? `${basePath}${href}` : basePath;
+    return pathname === fullPath || (href && pathname?.startsWith(fullPath));
+  })?.href ?? "overview";
 
-          return (
-            <Link
-              key={href || "overview"}
-              href={fullPath}
-              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                isActive
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted hover:text-text"
-              }`}
-            >
-              {label}
-            </Link>
-          );
-        })}
-      </nav>
+  return (
+    <div className="border-b border-border bg-card">
+      <div className="px-6 pt-4">
+        <h1 className="text-xl font-semibold text-foreground">{workspaceName}</h1>
+      </div>
+      <Tabs value={activeTab} className="px-6 mt-4">
+        <TabsList className="bg-transparent p-0 h-auto gap-1 border-0">
+          {TABS.map(({ href, label }) => {
+            const fullPath = href ? `${basePath}${href}` : basePath;
+            const value = href || "overview";
+
+            return (
+              <TabsTrigger key={value} value={value} asChild>
+                <Link
+                  href={fullPath}
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary"
+                >
+                  {label}
+                </Link>
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
+      </Tabs>
     </div>
   );
 }

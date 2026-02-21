@@ -25,7 +25,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   if (loading && !user && !isPublic) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-muted">Carregando…</div>
+        <div className="text-muted-foreground">Carregando…</div>
       </div>
     );
   }

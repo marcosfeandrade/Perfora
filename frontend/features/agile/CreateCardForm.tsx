@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 type CreateCardFormProps = {
   columnId: string;
@@ -27,42 +29,43 @@ export function CreateCardForm({ onSubmit }: CreateCardFormProps) {
 
   if (!open) {
     return (
-      <button
+      <Button
         type="button"
+        variant="outline"
         onClick={() => setOpen(true)}
-        className="w-full rounded-lg border border-dashed border-white/20 py-2 text-muted hover:text-text hover:border-primary/50 transition-colors text-sm"
+        className="w-full border-dashed hover:border-primary/50 hover:text-primary hover:bg-primary/5"
       >
         + Card
-      </button>
+      </Button>
     );
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-2">
-      <input
+      <Input
         type="text"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Título do card"
         autoFocus
-        className="w-full px-3 py-2 rounded-lg bg-background border border-white/10 text-text placeholder:text-muted text-sm focus:outline-none focus:ring-2 focus:ring-primary"
         disabled={loading}
       />
       <div className="flex gap-2">
-        <button
+        <Button
           type="submit"
+          size="sm"
           disabled={loading || !title.trim()}
-          className="px-3 py-1.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 disabled:opacity-50"
         >
           {loading ? "…" : "Adicionar"}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
           onClick={() => { setOpen(false); setTitle(""); }}
-          className="px-3 py-1.5 rounded-lg text-muted hover:text-text text-sm"
         >
           Cancelar
-        </button>
+        </Button>
       </div>
     </form>
   );

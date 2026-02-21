@@ -6,6 +6,8 @@ import type { Column as ColumnType } from "@/lib/types";
 import { KanbanCard } from "./KanbanCard";
 import { CreateCardForm } from "./CreateCardForm";
 import { ColumnMenu } from "./ColumnMenu";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 type KanbanColumnProps = {
   column: ColumnType;
@@ -42,19 +44,20 @@ export function KanbanColumn({
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
 
   return (
-    <div
+    <Card
       ref={setNodeRef}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      className={`flex-shrink-0 w-72 flex flex-col rounded-lg bg-surface/80 border transition-colors ${
-        isOver ? "border-accent ring-2 ring-accent/30" : "border-white/10"
-      }`}
+      className={cn(
+        "flex-shrink-0 w-72 flex flex-col overflow-hidden transition-all duration-200",
+        isOver && "ring-2 ring-primary/30 border-primary/50"
+      )}
     >
-      <div className="p-3 border-b border-white/10 flex items-center justify-between gap-2 group">
+      <CardHeader className="p-3 border-b border-border flex flex-row items-center justify-between gap-2 group">
         <div className="flex-1 min-w-0">
-          <h2 className="font-medium text-text truncate">{column.name}</h2>
+          <h2 className="font-medium text-foreground truncate">{column.name}</h2>
           {(column.wipLimit ?? null) != null && (
-            <p className="text-muted text-xs mt-0.5">
+            <p className="text-muted-foreground text-xs mt-0.5">
               WIP: {(column.cards ?? []).length}/{column.wipLimit ?? 0}
             </p>
           )}
@@ -70,11 +73,12 @@ export function KanbanColumn({
             onDelete={onDelete}
           />
         )}
-      </div>
-      <div
-        className={`flex-1 p-2 min-h-[120px] space-y-2 ${
+      </CardHeader>
+      <CardContent
+        className={cn(
+          "flex-1 p-2 min-h-[120px] space-y-2",
           isDragging ? "overflow-hidden" : "overflow-y-auto"
-        }`}
+        )}
       >
         {(column.cards ?? []).map((card) => (
           <KanbanCard
@@ -87,7 +91,7 @@ export function KanbanColumn({
           />
         ))}
         <CreateCardForm columnId={column.id} onSubmit={onAddCard} />
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

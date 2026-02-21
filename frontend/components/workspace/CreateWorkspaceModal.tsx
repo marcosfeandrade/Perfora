@@ -2,6 +2,17 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type CreateWorkspaceModalProps = {
   isOpen: boolean;
@@ -37,58 +48,42 @@ export function CreateWorkspaceModal({
     }
   };
 
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) onClose();
-  };
-
-  if (!isOpen) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={handleBackdropClick}
-    >
-      <div
-        className="w-full max-w-md rounded-xl bg-surface border border-white/10 shadow-xl p-6"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-lg font-semibold text-text mb-4">
-          Novo workspace
-        </h2>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Novo workspace</DialogTitle>
+        </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <label className="block text-sm font-medium text-muted mb-2">
-            Nome
-          </label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Ex: Meu Projeto"
-            className="w-full rounded-lg bg-background border border-white/10 px-3 py-2 text-text placeholder:text-muted focus:outline-none focus:border-primary/50"
-            autoFocus
-          />
+          <div className="space-y-2">
+            <Label htmlFor="workspace-name">Nome</Label>
+            <Input
+              id="workspace-name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ex: Meu Projeto"
+              autoFocus
+            />
+          </div>
           {error && (
-            <p className="text-sm text-red-400 mt-2">{error}</p>
+            <p className="text-sm text-destructive mt-2">{error}</p>
           )}
-          <div className="flex justify-end gap-2 mt-6">
-            <button
+          <DialogFooter className="mt-6">
+            <Button
               type="button"
+              variant="outline"
               onClick={onClose}
               disabled={loading}
-              className="px-4 py-2 rounded-lg text-muted hover:bg-white/5 transition-colors disabled:opacity-50"
             >
               Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={!name.trim() || loading}
-              className="px-4 py-2 rounded-lg bg-primary text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
-            >
+            </Button>
+            <Button type="submit" disabled={!name.trim() || loading}>
               {loading ? "Criando…" : "Criar"}
-            </button>
-          </div>
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

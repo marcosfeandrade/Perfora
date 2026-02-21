@@ -1,15 +1,19 @@
+import { Card, CardContent } from "@/components/ui/card";
+
 export default function NotesPage() {
   return (
     <div className="p-8">
-      <h2 className="text-lg font-semibold text-text mb-4">Notes</h2>
-      <p className="text-muted">
+      <h2 className="text-lg font-semibold text-foreground mb-4">Notes</h2>
+      <p className="text-muted-foreground mb-6">
         Notas e documentação do workspace.
       </p>
-      <div className="mt-6 p-6 rounded-xl bg-surface border border-white/10 border-dashed">
-        <p className="text-muted text-sm text-center">
-          Área de notas em breve.
-        </p>
-      </div>
+      <Card className="p-6 border-dashed">
+        <CardContent>
+          <p className="text-muted-foreground text-sm text-center">
+            Área de notas em breve.
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }

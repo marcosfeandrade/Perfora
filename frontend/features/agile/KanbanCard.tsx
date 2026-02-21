@@ -5,6 +5,8 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 import type { Card as CardType, CardAssignee } from "@/lib/types";
 import { CardAssigneePicker } from "./CardAssigneePicker";
 import { CardDetailModal } from "./CardDetailModal";
+import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 type KanbanCardProps = {
   card: CardType;
@@ -61,21 +63,22 @@ export function KanbanCard({
 
   return (
     <>
-      <div
+      <Card
         ref={setNodeRef}
         style={style}
         {...listeners}
         {...attributes}
         onClick={() => !isDragging && setModalOpen(true)}
-        className={`rounded-lg bg-background border border-white/10 p-3 cursor-grab active:cursor-grabbing transition-shadow ${
+        className={cn(
+          "p-3 cursor-grab active:cursor-grabbing transition-all duration-200 hover:shadow-md",
           isDragging ? "opacity-0" : "hover:border-primary/50"
-        }`}
+        )}
       >
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <p className="text-text font-medium text-sm">{card.title}</p>
+            <p className="text-foreground font-medium text-sm">{card.title}</p>
             {card.description ? (
-              <p className="text-muted text-xs mt-1 line-clamp-2 whitespace-pre-line break-words">
+              <p className="text-muted-foreground text-xs mt-1 line-clamp-2 whitespace-pre-line break-words">
                 {card.description}
               </p>
             ) : null}
@@ -87,14 +90,14 @@ export function KanbanCard({
             {assignees.slice(0, 2).map((a) => (
               <span
                 key={a.id}
-                className="w-6 h-6 rounded-full bg-primary/30 flex items-center justify-center text-[10px] text-accent"
+                className="size-6 rounded-full bg-primary/20 flex items-center justify-center text-[10px] text-primary"
                 title={a.name || a.email}
               >
                 {(a.name || a.email)?.[0]?.toUpperCase() ?? "?"}
               </span>
             ))}
             {assignees.length > 2 && (
-              <span className="text-[10px] text-muted">+{assignees.length - 2}</span>
+              <span className="text-[10px] text-muted-foreground">+{assignees.length - 2}</span>
             )}
             <CardAssigneePicker
               cardId={card.id}
@@ -104,7 +107,7 @@ export function KanbanCard({
             />
           </div>
         </div>
-      </div>
+      </Card>
       {modalOpen && (
         <CardDetailModal
           card={card}

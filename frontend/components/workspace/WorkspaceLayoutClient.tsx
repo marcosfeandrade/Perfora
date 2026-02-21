@@ -18,7 +18,7 @@ export function WorkspaceLayoutClient({
   if (!workspace) {
     return (
       <div className="p-8">
-        <p className="text-muted">Workspace não encontrado.</p>
+        <p className="text-muted-foreground">Workspace não encontrado.</p>
       </div>
     );
   }

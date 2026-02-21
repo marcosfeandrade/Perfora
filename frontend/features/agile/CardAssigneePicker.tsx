@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect, useLayoutEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { CardAssignee } from "@/lib/types";
+import { Users } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type CardAssigneePickerProps = {
   cardId: string;
@@ -24,7 +26,7 @@ export function CardAssigneePicker({
 
   const assigneeIds = assignees.map((a) => a.id);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (open && buttonRef.current && typeof document !== "undefined") {
       const rect = buttonRef.current.getBoundingClientRect();
       setPosition({ top: rect.bottom + 4, left: rect.left });
@@ -62,11 +64,11 @@ export function CardAssigneePicker({
   const dropdown = open && typeof document !== "undefined" && (
     <div
       id="card-assignee-dropdown"
-      className="fixed z-[100] min-w-[200px] max-h-48 overflow-y-auto rounded-lg bg-surface border border-white/10 shadow-xl py-1"
+      className="fixed z-[100] min-w-[200px] max-h-48 overflow-y-auto rounded-lg border border-border bg-popover shadow-lg py-1"
       style={{ top: position.top, left: position.left }}
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="px-2 py-1 text-muted text-xs">Responsáveis</div>
+      <div className="px-2 py-1 text-muted-foreground text-xs">Responsáveis</div>
       {allUsers.map((u) => {
         const isAssigned = assigneeIds.includes(u.id);
         return (
@@ -75,11 +77,14 @@ export function CardAssigneePicker({
             type="button"
             onClick={() => toggleUser(u.id)}
             disabled={loading}
-            className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/10 ${
-              isAssigned ? "bg-primary/20 text-accent" : "text-text"
-            }`}
+            className={cn(
+              "w-full px-3 py-2 text-left text-sm flex items-center gap-2 transition-colors",
+              isAssigned
+                ? "bg-primary/10 text-primary"
+                : "text-foreground hover:bg-accent"
+            )}
           >
-            <span className="w-4 h-4 rounded-full bg-primary/30 flex items-center justify-center text-xs">
+            <span className="size-4 rounded-full bg-primary/20 flex items-center justify-center text-xs text-primary">
               {(u.name || u.email)?.[0]?.toUpperCase() ?? "?"}
             </span>
             {u.name || u.email}
@@ -98,23 +103,10 @@ export function CardAssigneePicker({
           e.stopPropagation();
           setOpen((o) => !o);
         }}
-        className="p-1 rounded hover:bg-white/10 text-muted hover:text-text transition-colors"
+        className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-all duration-200"
         title="Responsáveis"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-        </svg>
+        <Users className="size-3.5" />
       </button>
       {dropdown && createPortal(dropdown, document.body)}
     </div>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { CreateBoardForm } from "@/features/agile/CreateBoardForm";
+import { Card, CardContent } from "@/components/ui/card";
 
 type BoardListPageProps = {
   params: Promise<{ id: string }>;
@@ -18,19 +19,20 @@ export default async function BoardListPage({ params }: BoardListPageProps) {
 
   return (
     <div className="p-8">
-      <h2 className="text-lg font-semibold text-text mb-4">Boards</h2>
+      <h2 className="text-lg font-semibold text-foreground mb-4">Boards</h2>
       <CreateBoardForm workspaceId={workspaceId} />
       {boards.length === 0 ? (
-        <p className="text-muted mt-6">Nenhum board ainda. Crie um acima.</p>
+        <p className="text-muted-foreground mt-6">Nenhum board ainda. Crie um acima.</p>
       ) : (
         <ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {boards.map((b) => (
             <li key={b.id}>
-              <Link
-                href={`/workspace/${workspaceId}/planner/board/${b.id}`}
-                className="block p-4 rounded-lg bg-surface hover:bg-white/5 text-text border border-white/10 transition-colors"
-              >
-                {b.name}
+              <Link href={`/workspace/${workspaceId}/planner/board/${b.id}`}>
+                <Card className="p-4 transition-all duration-200 hover:shadow-md hover:border-primary/50">
+                  <CardContent className="p-0 text-foreground">
+                    {b.name}
+                  </CardContent>
+                </Card>
               </Link>
             </li>
           ))}

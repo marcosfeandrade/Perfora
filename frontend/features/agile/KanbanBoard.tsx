@@ -13,10 +13,10 @@ import {
 } from "@dnd-kit/core";
 import { api } from "@/lib/api";
 import { useAgileBoardRealtime } from "@/hooks/useAgileSocket";
-import type { Board as BoardType, Column, Card } from "@/lib/types";
+import type { Board as BoardType, Column, Card as CardType } from "@/lib/types";
 import { KanbanColumn } from "./KanbanColumn";
 import { CreateColumnForm } from "./CreateColumnForm";
-import { CreateCardForm } from "./CreateCardForm";
+import { Card } from "@/components/ui/card";
 
 type BoardProps = {
   workspaceId: string;
@@ -30,7 +30,7 @@ export function KanbanBoard({
   initialBoard,
 }: BoardProps) {
   const [board, setBoard] = useState<BoardType>(initialBoard);
-  const [activeCard, setActiveCard] = useState<Card | null>(null);
+  const [activeCard, setActiveCard] = useState<CardType | null>(null);
   const [allUsers, setAllUsers] = useState<{ id: string; email: string; name: string | null }[]>([]);
 
   useAgileBoardRealtime(workspaceId, boardId, setBoard);
@@ -216,7 +216,7 @@ export function KanbanBoard({
   return (
     <div className="h-full flex flex-col p-4">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-semibold text-text">{board.name}</h1>
+        <h1 className="text-xl font-semibold text-foreground">{board.name}</h1>
       </div>
       <DndContext
         sensors={sensors}
@@ -254,10 +254,10 @@ export function KanbanBoard({
         </div>
         <DragOverlay dropAnimation={null}>
           {activeCard ? (
-            <div className="rounded-lg bg-surface border-2 border-primary p-3 cursor-grabbing shadow-xl w-[272px] opacity-95">
-              <p className="text-text font-medium text-sm">{activeCard.title}</p>
+            <Card className="rounded-lg border-2 border-primary p-3 cursor-grabbing shadow-xl w-[272px] opacity-95">
+              <p className="text-foreground font-medium text-sm">{activeCard.title}</p>
               {activeCard.description ? (
-                <p className="text-muted text-xs mt-1 line-clamp-2 whitespace-pre-line break-words">
+                <p className="text-muted-foreground text-xs mt-1 line-clamp-2 whitespace-pre-line break-words">
                   {activeCard.description}
                 </p>
               ) : null}
@@ -266,14 +266,14 @@ export function KanbanBoard({
                   {(activeCard.assignees ?? []).slice(0, 3).map((a: { id: string; name?: string | null; email?: string }) => (
                     <span
                       key={a.id}
-                      className="w-5 h-5 rounded-full bg-primary/30 flex items-center justify-center text-[9px] text-accent"
+                      className="size-5 rounded-full bg-primary/20 flex items-center justify-center text-[9px] text-primary"
                     >
                       {((a as { name?: string; email?: string }).name || (a as { email?: string }).email)?.[0]?.toUpperCase() ?? "?"}
                     </span>
                   ))}
                 </div>
               )}
-            </div>
+            </Card>
           ) : null}
         </DragOverlay>
       </DndContext>
@@ -281,7 +281,7 @@ export function KanbanBoard({
   );
 }
 
-function findCard(board: BoardType, cardId: string): Card | undefined {
+function findCard(board: BoardType, cardId: string): CardType | undefined {
   for (const col of board.columns) {
     const card = col.cards.find((c) => c.id === cardId);
     if (card) return card;
