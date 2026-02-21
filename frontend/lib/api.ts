@@ -1,4 +1,4 @@
-import type { Workspace, Board, Column, Card } from "@/lib/types";
+import type { Workspace, Board, Column, Card, NoteFolder, Note } from "@/lib/types";
 import type { AuthUser } from "@/lib/auth";
 import { getToken } from "@/lib/auth";
 
@@ -95,6 +95,50 @@ export const api = {
           method: "PATCH",
           body: JSON.stringify(body),
         }),
+    },
+  },
+  notes: {
+    folders: {
+      list: (workspaceId: string) =>
+        request<NoteFolder[]>(`/notes/workspaces/${workspaceId}/folders`),
+      create: (workspaceId: string, body: { name: string; parentId?: string }) =>
+        request<NoteFolder>(`/notes/workspaces/${workspaceId}/folders`, {
+          method: "POST",
+          body: JSON.stringify(body),
+        }),
+      update: (id: string, body: { name?: string; parentId?: string | null }) =>
+        request<NoteFolder>(`/notes/folders/${id}`, {
+          method: "PATCH",
+          body: JSON.stringify(body),
+        }),
+      delete: (id: string) =>
+        request<void>(`/notes/folders/${id}`, { method: "DELETE" }),
+    },
+    notes: {
+      list: (workspaceId: string) =>
+        request<Note[]>(`/notes/workspaces/${workspaceId}/notes`),
+      search: (workspaceId: string, query: string) =>
+        request<Note[]>(`/notes/workspaces/${workspaceId}/notes/search?q=${encodeURIComponent(query)}`),
+      get: (id: string) => request<Note>(`/notes/notes/${id}`),
+      getBacklinks: (id: string) =>
+        request<{ id: string; title: string }[]>(`/notes/notes/${id}/backlinks`),
+      create: (workspaceId: string, body: { title: string; content?: string; folderId?: string }) =>
+        request<Note>(`/notes/workspaces/${workspaceId}/notes`, {
+          method: "POST",
+          body: JSON.stringify(body),
+        }),
+      update: (id: string, body: { title?: string; content?: string; folderId?: string | null; isPinned?: boolean; isFavorite?: boolean }) =>
+        request<Note>(`/notes/notes/${id}`, {
+          method: "PATCH",
+          body: JSON.stringify(body),
+        }),
+      move: (id: string, body: { folderId?: string | null; order?: number }) =>
+        request<Note>(`/notes/notes/${id}/move`, {
+          method: "PATCH",
+          body: JSON.stringify(body),
+        }),
+      delete: (id: string) =>
+        request<void>(`/notes/notes/${id}`, { method: "DELETE" }),
     },
   },
   auth: {

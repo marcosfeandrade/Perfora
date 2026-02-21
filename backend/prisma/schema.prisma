@@ -24,6 +24,35 @@ model Workspace {
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
   boards    Board[]
+  folders   NoteFolder[]
+  notes     Note[]
+}
+
+model NoteFolder {
+  id           String      @id @default(cuid())
+  name         String
+  parentId     String?
+  parent       NoteFolder?  @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children     NoteFolder[] @relation("FolderHierarchy")
+  workspaceId  String
+  workspace    Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  order        Int         @default(0)
+  notes        Note[]
+}
+
+model Note {
+  id          String     @id @default(cuid())
+  title       String
+  content     String     @default("")
+  folderId    String?
+  folder      NoteFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  workspaceId String
+  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  isPinned    Boolean    @default(false)
+  isFavorite  Boolean    @default(false)
+  order       Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 }
 
 model Board {

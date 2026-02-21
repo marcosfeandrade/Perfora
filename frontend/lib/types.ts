@@ -34,3 +34,26 @@ export interface Board {
   name: string;
   columns: Column[];
 }
+
+export interface NoteFolder {
+  id: string;
+  name: string;
+  parentId: string | null;
+  workspaceId: string;
+  order: number;
+  children?: NoteFolder[];
+  notes?: Note[];
+}
+
+export interface Note {
+  id: string;
+  title: string;
+  content: string;
+  folderId: string | null;
+  workspaceId: string;
+  isPinned: boolean;
+  isFavorite: boolean;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+}
