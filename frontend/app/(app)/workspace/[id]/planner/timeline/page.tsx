@@ -1,19 +1,15 @@
-import { Card, CardContent } from "@/components/ui/card";
+import { TimelineView } from "@/features/agile/timeline/TimelineView";
 
-export default function TimelinePage() {
+type TimelinePageProps = {
+  params: Promise<{ id: string }>;
+};
+
+export default async function TimelinePage({ params }: TimelinePageProps) {
+  const { id: workspaceId } = await params;
+
   return (
-    <div className="p-8">
-      <h2 className="text-lg font-semibold text-foreground mb-4">Timeline</h2>
-      <p className="text-muted-foreground mb-6">
-        Visualização em linha do tempo das tarefas e marcos.
-      </p>
-      <Card className="p-6 border-dashed">
-        <CardContent className="p-0">
-          <p className="text-muted-foreground text-sm text-center">
-            A timeline será integrada aqui.
-          </p>
-        </CardContent>
-      </Card>
+    <div className="flex flex-col flex-1 min-h-0 p-4">
+      <TimelineView workspaceId={workspaceId} />
     </div>
   );
 }
