@@ -106,8 +106,13 @@ export const api = {
           method: "POST",
           body: JSON.stringify(body),
         }),
-      update: (id: string, body: { name?: string; parentId?: string | null }) =>
+      update: (id: string, body: { name?: string; parentId?: string | null; order?: number }) =>
         request<NoteFolder>(`/notes/folders/${id}`, {
+          method: "PATCH",
+          body: JSON.stringify(body),
+        }),
+      move: (id: string, body: { parentId?: string | null; order?: number }) =>
+        request<NoteFolder>(`/notes/folders/${id}/move`, {
           method: "PATCH",
           body: JSON.stringify(body),
         }),

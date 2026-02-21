@@ -14,6 +14,7 @@ import { UpdateFolderDto } from './dto/update-folder.dto.js';
 import { CreateNoteDto } from './dto/create-note.dto.js';
 import { UpdateNoteDto } from './dto/update-note.dto.js';
 import { MoveNoteDto } from './dto/move-note.dto.js';
+import { MoveFolderDto } from './dto/move-folder.dto.js';
 
 @Controller('notes')
 export class NotesController {
@@ -35,6 +36,11 @@ export class NotesController {
   @Patch('folders/:id')
   updateFolder(@Param('id') id: string, @Body() dto: UpdateFolderDto) {
     return this.notesService.updateFolder(id, dto);
+  }
+
+  @Patch('folders/:id/move')
+  moveFolder(@Param('id') id: string, @Body() dto: MoveFolderDto) {
+    return this.notesService.moveFolder(id, dto);
   }
 
   @Delete('folders/:id')

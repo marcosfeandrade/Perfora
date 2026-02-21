@@ -31,6 +31,11 @@ import {
 } from "@/components/ui/dialog";
 import { CreateFolderDialog } from "./CreateFolderDialog";
 import { CreateNoteDialog } from "./CreateNoteDialog";
+import { NotesSidebarDnd } from "./NotesSidebarDnd";
+import { DraggableNote } from "./DraggableNote";
+import { DraggableFolder } from "./DraggableFolder";
+import { DroppableFolder } from "./DroppableFolder";
+import { DroppableRoot } from "./DroppableRoot";
 import { api } from "@/lib/api";
 import type { NoteFolder, Note } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -187,21 +192,23 @@ export function NotesSidebar({
                 ))}
               </div>
             ) : (
-              <FolderTree
-                workspaceId={workspaceId}
-                folders={folders}
-                rootNotes={rootNotes}
-                activeNoteId={activeNoteId}
-                expandedFolders={expandedFolders}
-                onToggleFolder={toggleFolder}
-                onCreateFolder={handleCreateFolder}
-                onCreateNote={handleCreateNote}
-                onRenameFolder={(id, name) => {
-                  setRenameFolderId(id);
-                  setRenameValue(name);
-                }}
-                onDeleteFolder={handleDeleteFolder}
-              />
+              <NotesSidebarDnd workspaceId={workspaceId} onDrop={onRefresh}>
+                <FolderTree
+                  workspaceId={workspaceId}
+                  folders={folders}
+                  rootNotes={rootNotes}
+                  activeNoteId={activeNoteId}
+                  expandedFolders={expandedFolders}
+                  onToggleFolder={toggleFolder}
+                  onCreateFolder={handleCreateFolder}
+                  onCreateNote={handleCreateNote}
+                  onRenameFolder={(id, name) => {
+                    setRenameFolderId(id);
+                    setRenameValue(name);
+                  }}
+                  onDeleteFolder={handleDeleteFolder}
+                />
+              </NotesSidebarDnd>
             )}
           </div>
         </ScrollArea>
@@ -286,49 +293,41 @@ function FolderTree({
 }: FolderTreeProps) {
   return (
     <div className="space-y-0.5">
-      {rootNotes
-        .filter((n) => n.isPinned)
-        .map((n) => (
-          <Link
-            key={n.id}
-            href={`/workspace/${workspaceId}/notes/${n.id}`}
-            className={cn(
-              "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-all duration-200",
-              activeNoteId === n.id
-                ? "bg-primary/10 text-primary border-l-2 border-l-primary"
-                : "text-foreground hover:bg-accent"
-            )}
-          >
-            <Pin className="size-3.5 shrink-0" />
-            <span className="truncate">{n.title}</span>
-          </Link>
-        ))}
-      {rootNotes.filter((n) => !n.isPinned).length > 0 && (
-        <>
-          <p className="text-xs text-muted-foreground px-2 py-1 mt-2">
-            Sem pasta
-          </p>
+      <DroppableRoot>
+        <div className="space-y-0.5">
           {rootNotes
-            .filter((n) => !n.isPinned)
+            .filter((n) => n.isPinned)
             .map((n) => (
-              <Link
+              <DraggableNote
                 key={n.id}
-                href={`/workspace/${workspaceId}/notes/${n.id}`}
-                className={cn(
-                  "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-all duration-200",
-                  activeNoteId === n.id
-                    ? "bg-primary/10 text-primary border-l-2 border-l-primary"
-                    : "text-foreground hover:bg-accent"
-                )}
-              >
-                <FileText className="size-4 shrink-0" />
-                <span className="truncate">{n.title}</span>
-              </Link>
+                note={n}
+                workspaceId={workspaceId}
+                activeNoteId={activeNoteId}
+                showPin
+              />
             ))}
-        </>
-      )}
+          {rootNotes.filter((n) => !n.isPinned).length > 0 && (
+            <>
+              <p className="text-xs text-muted-foreground px-2 py-1 mt-2">
+                Sem pasta
+              </p>
+              {rootNotes
+                .filter((n) => !n.isPinned)
+                .map((n) => (
+                  <DraggableNote
+                    key={n.id}
+                    note={n}
+                    workspaceId={workspaceId}
+                    activeNoteId={activeNoteId}
+                  />
+                ))}
+            </>
+          )}
+        </div>
+      </DroppableRoot>
       {folders.map((folder) => (
-        <FolderItem
+        <DroppableFolder key={folder.id} folderId={folder.id}>
+          <FolderItem
           key={folder.id}
           workspaceId={workspaceId}
           folder={folder}
@@ -341,6 +340,7 @@ function FolderTree({
           onDeleteFolder={onDeleteFolder}
           depth={0}
         />
+        </DroppableFolder>
       ))}
     </div>
   );
@@ -365,40 +365,41 @@ function FolderItem({
 
   return (
     <div className="mt-1">
-      <div
-        className={cn(
-          "flex items-center gap-1 rounded-md group",
-          "hover:bg-accent/50"
-        )}
-      >
-        <button
-          type="button"
-          onClick={() => onToggleFolder(folder.id)}
-          className="p-0.5 rounded hover:bg-accent flex items-center"
+      <DraggableFolder folder={folder} isExpanded={isExpanded}>
+        <div
+          className={cn(
+            "flex items-center gap-1 rounded-md group",
+            "hover:bg-accent/50"
+          )}
         >
-          {hasChildren ? (
-            isExpanded ? (
-              <ChevronDown className="size-4 text-muted-foreground" />
+          <button
+            type="button"
+            onClick={() => onToggleFolder(folder.id)}
+            className="p-0.5 rounded hover:bg-accent flex items-center"
+          >
+            {hasChildren ? (
+              isExpanded ? (
+                <ChevronDown className="size-4 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="size-4 text-muted-foreground" />
+              )
             ) : (
-              <ChevronRight className="size-4 text-muted-foreground" />
-            )
-          ) : (
-            <span className="size-4 inline-block" />
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => onToggleFolder(folder.id)}
-          className="flex-1 flex items-center min-w-0 py-1 text-left"
-        >
-          {isExpanded ? (
-            <FolderOpen className="size-4 shrink-0 text-primary/80" />
-          ) : (
-            <Folder className="size-4 shrink-0 text-muted-foreground" />
-          )}
-          <span className="truncate text-sm ml-1.5">{folder.name}</span>
-        </button>
-        <DropdownMenu>
+              <span className="size-4 inline-block" />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => onToggleFolder(folder.id)}
+            className="flex-1 flex items-center min-w-0 py-1 text-left"
+          >
+            {isExpanded ? (
+              <FolderOpen className="size-4 shrink-0 text-primary/80" />
+            ) : (
+              <Folder className="size-4 shrink-0 text-muted-foreground" />
+            )}
+            <span className="truncate text-sm ml-1.5">{folder.name}</span>
+          </button>
+          <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
@@ -429,31 +430,23 @@ function FolderItem({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
+        </div>
+      </DraggableFolder>
       {isExpanded && (
         <div className="ml-4 border-l border-border pl-1">
           {(folder.notes ?? [])
             .sort((a, b) => (a.isPinned ? -1 : 0) - (b.isPinned ? -1 : 0))
             .map((n) => (
-              <Link
+              <DraggableNote
                 key={n.id}
-                href={`/workspace/${workspaceId}/notes/${n.id}`}
-                className={cn(
-                  "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-all duration-200",
-                  activeNoteId === n.id
-                    ? "bg-primary/10 text-primary border-l-2 border-l-primary"
-                    : "text-foreground hover:bg-accent"
-                )}
-              >
-                {n.isPinned ? (
-                  <Pin className="size-3.5 shrink-0" />
-                ) : (
-                  <FileText className="size-4 shrink-0" />
-                )}
-                <span className="truncate">{n.title}</span>
-              </Link>
+                note={n}
+                workspaceId={workspaceId}
+                activeNoteId={activeNoteId}
+                showPin={n.isPinned}
+              />
             ))}
           {(folder.children ?? []).map((child) => (
+            <DroppableFolder key={child.id} folderId={child.id}>
             <FolderItem
               key={child.id}
               workspaceId={workspaceId}
@@ -467,6 +460,7 @@ function FolderItem({
               onDeleteFolder={onDeleteFolder}
               depth={depth + 1}
             />
+            </DroppableFolder>
           ))}
         </div>
       )}

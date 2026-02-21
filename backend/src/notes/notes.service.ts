@@ -6,6 +6,7 @@ import { UpdateFolderDto } from './dto/update-folder.dto.js';
 import { CreateNoteDto } from './dto/create-note.dto.js';
 import { UpdateNoteDto } from './dto/update-note.dto.js';
 import { MoveNoteDto } from './dto/move-note.dto.js';
+import { MoveFolderDto } from './dto/move-folder.dto.js';
 
 @Injectable()
 export class NotesService {
@@ -75,6 +76,50 @@ export class NotesService {
     });
     this.notesGateway.broadcastNotesStructureUpdate(folder.workspaceId);
     return folder;
+  }
+
+  async moveFolder(id: string, dto: MoveFolderDto) {
+    if (dto.parentId === id) return this.getFolderById(id);
+    if (dto.parentId) {
+      const wouldCreateCycle = await this.isDescendant(dto.parentId, id);
+      if (wouldCreateCycle) throw new Error('Cannot move folder into its own descendant');
+    }
+    const folder = await this.prisma.noteFolder.findUniqueOrThrow({
+      where: { id },
+      select: { workspaceId: true, parentId: true },
+    });
+    const parentId = dto.parentId ?? null;
+    const maxOrder = await this.prisma.noteFolder
+      .aggregate({
+        where: { workspaceId: folder.workspaceId, parentId },
+        _max: { order: true },
+      })
+      .then((r) => (r._max.order ?? -1) + 1);
+    const order = dto.order ?? maxOrder;
+    const updated = await this.prisma.noteFolder.update({
+      where: { id },
+      data: { parentId, order },
+    });
+    this.notesGateway.broadcastNotesStructureUpdate(updated.workspaceId);
+    return updated;
+  }
+
+  private async getFolderById(id: string) {
+    return this.prisma.noteFolder.findUniqueOrThrow({ where: { id } });
+  }
+
+  private async isDescendant(folderId: string, potentialAncestorId: string): Promise<boolean> {
+    let current: string | null = folderId;
+    while (current) {
+      const folder = await this.prisma.noteFolder.findUnique({
+        where: { id: current },
+        select: { parentId: true },
+      });
+      if (!folder) return false;
+      if (folder.parentId === potentialAncestorId) return true;
+      current = folder.parentId;
+    }
+    return false;
   }
 
   async deleteFolder(id: string) {
