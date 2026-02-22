@@ -8,21 +8,22 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String?
-  createdAt    DateTime @default(now())
-  workspaces   Workspace[]
-  cardAssignments CardAssignee[]
-  createdCards   Card[]   @relation("CardCreator")
+  id                String   @id @default(cuid())
+  email             String   @unique
+  passwordHash      String
+  name              String?
+  createdAt         DateTime @default(now())
+  ownedWorkspaces   Workspace[]       @relation("WorkspaceOwner")
+  workspaceMembers  WorkspaceMember[]
+  cardAssignments   CardAssignee[]
+  createdCards      Card[]   @relation("CardCreator")
 }
 
 model Workspace {
   id                 String   @id @default(cuid())
   name               String
-  userId             String?
-  user               User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  ownerId            String
+  owner              User     @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   createdAt          DateTime @default(now())
   plannerTaskPrefix  String?
   notesSettings      Json?
@@ -31,6 +32,19 @@ model Workspace {
   folders            NoteFolder[]
   notes              Note[]
   cards              Card[]
+  members            WorkspaceMember[]
+}
+
+model WorkspaceMember {
+  id          String   @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        String
+  createdAt   DateTime @default(now())
+
+  @@unique([workspaceId, userId])
 }
 
 model NoteFolder {

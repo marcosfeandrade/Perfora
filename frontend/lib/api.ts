@@ -46,6 +46,14 @@ async function request<T>(
   }
 }
 
+export type WorkspaceMember = {
+  id: string;
+  workspaceId: string;
+  userId: string;
+  role: string;
+  user: { id: string; name: string | null; email: string };
+};
+
 export const api = {
   workspaces: {
     list: () => request<Workspace[]>("/workspaces"),
@@ -56,6 +64,19 @@ export const api = {
       request<Workspace>(`/workspaces/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
     delete: (id: string) =>
       request<void>(`/workspaces/${id}`, { method: "DELETE" }),
+    members: {
+      list: (workspaceId: string) =>
+        request<WorkspaceMember[]>(`/workspaces/${workspaceId}/members`),
+      add: (workspaceId: string, body: { email: string }) =>
+        request<WorkspaceMember>(`/workspaces/${workspaceId}/members`, {
+          method: "POST",
+          body: JSON.stringify(body),
+        }),
+      remove: (workspaceId: string, userId: string) =>
+        request<void>(`/workspaces/${workspaceId}/members/${userId}`, {
+          method: "DELETE",
+        }),
+    },
   },
   agile: {
     backlog: (workspaceId: string) =>

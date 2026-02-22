@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../core/prisma/prisma.service.js';
+import { WorkspaceService } from '../workspace/workspace.service.js';
 import { AgileGateway } from './agile.gateway.js';
 import { CreateBoardDto } from './dto/create-board.dto.js';
 import { UpdateBoardDto } from './dto/update-board.dto.js';
@@ -14,10 +15,12 @@ import { MoveCardDto } from './dto/move-card.dto.js';
 export class AgileService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly workspaceService: WorkspaceService,
     private readonly agileGateway: AgileGateway,
   ) {}
 
-  createBoard(dto: CreateBoardDto) {
+  async createBoard(userId: string, dto: CreateBoardDto) {
+    await this.workspaceService.assertMember(dto.workspaceId, userId);
     return this.prisma.board.create({
       data: {
         name: dto.name,
@@ -26,7 +29,8 @@ export class AgileService {
     });
   }
 
-  findBacklogCards(workspaceId: string) {
+  async findBacklogCards(workspaceId: string, userId: string) {
+    await this.workspaceService.assertMember(workspaceId, userId);
     return this.prisma.card.findMany({
       where: { workspaceId, columnId: null },
       orderBy: { order: 'asc' },
@@ -39,7 +43,8 @@ export class AgileService {
     });
   }
 
-  findBoardsByWorkspace(workspaceId: string) {
+  async findBoardsByWorkspace(workspaceId: string, userId: string) {
+    await this.workspaceService.assertMember(workspaceId, userId);
     return this.prisma.board.findMany({
       where: { workspaceId },
       include: {
@@ -61,8 +66,8 @@ export class AgileService {
     });
   }
 
-  findBoard(id: string) {
-    return this.prisma.board.findUniqueOrThrow({
+  async findBoard(id: string, userId: string) {
+    const board = await this.prisma.board.findUniqueOrThrow({
       where: { id },
       include: {
         columns: {
@@ -81,22 +86,39 @@ export class AgileService {
         },
       },
     });
+    await this.workspaceService.assertMember(board.workspaceId, userId);
+    return board;
   }
 
-  updateBoard(id: string, dto: UpdateBoardDto) {
+  async updateBoard(id: string, userId: string, dto: UpdateBoardDto) {
+    const board = await this.prisma.board.findUniqueOrThrow({
+      where: { id },
+      select: { workspaceId: true },
+    });
+    await this.workspaceService.assertMember(board.workspaceId, userId);
     return this.prisma.board.update({
       where: { id },
       data: dto,
     });
   }
 
-  removeBoard(id: string) {
+  async removeBoard(id: string, userId: string) {
+    const board = await this.prisma.board.findUniqueOrThrow({
+      where: { id },
+      select: { workspaceId: true },
+    });
+    await this.workspaceService.assertMember(board.workspaceId, userId);
     return this.prisma.board.delete({
       where: { id },
     });
   }
 
-  async createColumn(dto: CreateColumnDto) {
+  async createColumn(userId: string, dto: CreateColumnDto) {
+    const board = await this.prisma.board.findUniqueOrThrow({
+      where: { id: dto.boardId },
+      select: { workspaceId: true },
+    });
+    await this.workspaceService.assertMember(board.workspaceId, userId);
     const column = await this.prisma.column.create({
       data: {
         name: dto.name,
@@ -104,48 +126,59 @@ export class AgileService {
         boardId: dto.boardId,
       },
     });
-    const board = await this.prisma.board.findUniqueOrThrow({
-      where: { id: dto.boardId },
-      select: { workspaceId: true },
-    });
-    const fullBoard = await this.findBoard(dto.boardId);
+    const fullBoard = await this.findBoard(dto.boardId, userId);
     this.agileGateway.broadcastBoardUpdate(board.workspaceId, fullBoard);
     return column;
   }
 
-  async updateColumn(id: string, dto: UpdateColumnDto) {
-    const updated = await this.prisma.column.update({
-      where: { id },
-      data: dto,
-    });
-    await this.broadcastBoardForColumn(id);
-    return updated;
-  }
-
-  async removeColumn(id: string) {
+  async updateColumn(id: string, userId: string, dto: UpdateColumnDto) {
     const column = await this.prisma.column.findUniqueOrThrow({
       where: { id },
       select: { boardId: true },
     });
-    await this.prisma.column.delete({ where: { id } });
     const board = await this.prisma.board.findUniqueOrThrow({
       where: { id: column.boardId },
       select: { workspaceId: true },
     });
-    const fullBoard = await this.findBoard(column.boardId);
+    await this.workspaceService.assertMember(board.workspaceId, userId);
+    const updated = await this.prisma.column.update({
+      where: { id },
+      data: dto,
+    });
+    await this.broadcastBoardForColumn(id, userId);
+    return updated;
+  }
+
+  async removeColumn(id: string, userId: string) {
+    const column = await this.prisma.column.findUniqueOrThrow({
+      where: { id },
+      select: { boardId: true },
+    });
+    const board = await this.prisma.board.findUniqueOrThrow({
+      where: { id: column.boardId },
+      select: { workspaceId: true },
+    });
+    await this.workspaceService.assertMember(board.workspaceId, userId);
+    await this.prisma.column.delete({ where: { id } });
+    const fullBoard = await this.findBoard(column.boardId, userId);
     this.agileGateway.broadcastBoardUpdate(board.workspaceId, fullBoard);
   }
 
-  async moveColumnLeft(columnId: string) {
+  async moveColumnLeft(columnId: string, userId: string) {
     const column = await this.prisma.column.findUniqueOrThrow({
       where: { id: columnId },
     });
+    const board = await this.prisma.board.findUniqueOrThrow({
+      where: { id: column.boardId },
+      select: { workspaceId: true },
+    });
+    await this.workspaceService.assertMember(board.workspaceId, userId);
     const columns = await this.prisma.column.findMany({
       where: { boardId: column.boardId },
       orderBy: { order: 'asc' },
     });
     const index = columns.findIndex((c) => c.id === columnId);
-    if (index <= 0) return this.findBoard(column.boardId);
+    if (index <= 0) return this.findBoard(column.boardId, userId);
     const prev = columns[index - 1];
     await this.prisma.$transaction([
       this.prisma.column.update({
@@ -157,20 +190,25 @@ export class AgileService {
         data: { order: column.order },
       }),
     ]);
-    await this.broadcastBoardForColumn(columnId);
-    return this.findBoard(column.boardId);
+    await this.broadcastBoardForColumn(columnId, userId);
+    return this.findBoard(column.boardId, userId);
   }
 
-  async moveColumnRight(columnId: string) {
+  async moveColumnRight(columnId: string, userId: string) {
     const column = await this.prisma.column.findUniqueOrThrow({
       where: { id: columnId },
     });
+    const board = await this.prisma.board.findUniqueOrThrow({
+      where: { id: column.boardId },
+      select: { workspaceId: true },
+    });
+    await this.workspaceService.assertMember(board.workspaceId, userId);
     const columns = await this.prisma.column.findMany({
       where: { boardId: column.boardId },
       orderBy: { order: 'asc' },
     });
     const index = columns.findIndex((c) => c.id === columnId);
-    if (index < 0 || index >= columns.length - 1) return this.findBoard(column.boardId);
+    if (index < 0 || index >= columns.length - 1) return this.findBoard(column.boardId, userId);
     const next = columns[index + 1];
     await this.prisma.$transaction([
       this.prisma.column.update({
@@ -182,11 +220,11 @@ export class AgileService {
         data: { order: column.order },
       }),
     ]);
-    await this.broadcastBoardForColumn(columnId);
-    return this.findBoard(column.boardId);
+    await this.broadcastBoardForColumn(columnId, userId);
+    return this.findBoard(column.boardId, userId);
   }
 
-  private async broadcastBoardForColumn(columnId: string) {
+  private async broadcastBoardForColumn(columnId: string, userId: string) {
     const column = await this.prisma.column.findUnique({
       where: { id: columnId },
       select: { boardId: true },
@@ -196,11 +234,11 @@ export class AgileService {
       where: { id: column.boardId },
       select: { workspaceId: true },
     });
-    const fullBoard = await this.findBoard(column.boardId);
+    const fullBoard = await this.findBoard(column.boardId, userId);
     this.agileGateway.broadcastBoardUpdate(board.workspaceId, fullBoard);
   }
 
-  async createCard(dto: CreateCardDto) {
+  async createCard(userId: string, dto: CreateCardDto) {
     const { assigneeIds, columnId, workspaceId, createdById, labels, ...rest } = dto;
     const title = rest.title.trim() || 'Nova task';
     let code: string | null = null;
@@ -224,6 +262,7 @@ export class AgileService {
         where: { id: columnId },
         include: { board: { include: { workspace: true } } },
       });
+      await this.workspaceService.assertMember(column.board.workspaceId, userId);
       const workspace = column.board.workspace;
 
       if (workspace.plannerTaskPrefix?.trim()) {
@@ -256,7 +295,7 @@ export class AgileService {
           data: { labels: merged },
         });
       }
-      await this.broadcastBoardForColumn(columnId);
+      await this.broadcastBoardForColumn(columnId, userId);
       return card;
     }
 
@@ -264,6 +303,7 @@ export class AgileService {
       throw new Error('workspaceId é obrigatório para criar card no backlog');
     }
 
+    await this.workspaceService.assertMember(workspaceId, userId);
     const workspace = await this.prisma.workspace.findUniqueOrThrow({
       where: { id: workspaceId },
     });
@@ -305,7 +345,12 @@ export class AgileService {
     return card;
   }
 
-  async updateCard(id: string, dto: UpdateCardDto) {
+  async updateCard(id: string, userId: string, dto: UpdateCardDto) {
+    const card = await this.prisma.card.findUniqueOrThrow({
+      where: { id },
+      select: { workspaceId: true },
+    });
+    await this.workspaceService.assertMember(card.workspaceId, userId);
     const { assigneeIds, labels, startDate, dueDate, priority, ...rest } = dto;
     const data: Record<string, unknown> = { ...rest };
     if (assigneeIds !== undefined) {
@@ -353,33 +398,35 @@ export class AgileService {
       },
     });
     if (updated.columnId) {
-      await this.broadcastBoardForColumn(updated.columnId);
+      await this.broadcastBoardForColumn(updated.columnId, userId);
     } else {
       this.agileGateway.broadcastBacklogUpdate(updated.workspaceId);
     }
     return updated;
   }
 
-  async removeCard(id: string) {
+  async removeCard(id: string, userId: string) {
     const card = await this.prisma.card.findUniqueOrThrow({
       where: { id },
       select: { columnId: true, workspaceId: true },
     });
+    await this.workspaceService.assertMember(card.workspaceId, userId);
     await this.prisma.card.delete({
       where: { id },
     });
     if (card.columnId) {
-      await this.broadcastBoardForColumn(card.columnId);
+      await this.broadcastBoardForColumn(card.columnId, userId);
     } else {
       this.agileGateway.broadcastBacklogUpdate(card.workspaceId);
     }
   }
 
-  async moveCard(cardId: string, dto: MoveCardDto) {
+  async moveCard(cardId: string, userId: string, dto: MoveCardDto) {
     const card = await this.prisma.card.findUniqueOrThrow({
       where: { id: cardId },
       include: { column: true, workspace: true },
     });
+    await this.workspaceService.assertMember(card.workspaceId, userId);
 
     const movingToBacklog = !dto.targetColumnId;
     const movingToColumn = !!dto.targetColumnId;
@@ -412,10 +459,10 @@ export class AgileService {
         ),
       );
       this.agileGateway.broadcastBacklogUpdate(card.workspaceId);
-      if (card.columnId) {
-        await this.broadcastBoardForColumn(card.columnId);
-      }
-      return this.prisma.card.findUniqueOrThrow({
+    if (card.columnId) {
+      await this.broadcastBoardForColumn(card.columnId, userId);
+    }
+    return this.prisma.card.findUniqueOrThrow({
         where: { id: cardId },
         include: {
           assignees: {
@@ -462,7 +509,7 @@ export class AgileService {
         targetColumnCards.map((c) => ({ id: c.id })),
       );
       if (card.columnId) {
-        await this.broadcastBoardForColumn(card.columnId);
+        await this.broadcastBoardForColumn(card.columnId, userId);
       }
       this.agileGateway.broadcastBacklogUpdate(card.workspaceId);
     }
@@ -475,7 +522,7 @@ export class AgileService {
       where: { id: updated.columnId! },
       select: { boardId: true },
     });
-    const fullBoard = await this.findBoard(column.boardId);
+    const fullBoard = await this.findBoard(column.boardId, userId);
     const boardWithWorkspace = await this.prisma.board.findUniqueOrThrow({
       where: { id: column.boardId },
       select: { workspaceId: true },

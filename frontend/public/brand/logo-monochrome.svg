@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Perfora - Logo monocromatica (preto)
+  Uso: impressao, documentos, contraste maximo
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 40" fill="none" aria-hidden="true">
+  <!-- Simbolo em preto -->
+  <g transform="translate(0, 4) scale(1.25)">
+    <path
+      d="M8 6 L8 26 L8 18 L14 18 A6 6 0 0 0 14 6 L8 6 Z"
+      fill="#0B0B0F"
+    />
+    <path
+      d="M6 10 L18 6"
+      stroke="#0B0B0F"
+      stroke-width="2"
+      stroke-linecap="round"
+    />
+  </g>
+  <!-- Nome "Perfora" -->
+  <text x="44" y="26" fill="#0B0B0F" font-family="system-ui, -apple-system, sans-serif" font-weight="600" font-size="12">P</text>
+  <text x="54" y="26" fill="#0B0B0F" font-family="system-ui, -apple-system, sans-serif" font-weight="500" font-size="12">erfora</text>
+</svg>

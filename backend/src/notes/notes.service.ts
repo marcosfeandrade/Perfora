@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../core/prisma/prisma.service.js';
+import { WorkspaceService } from '../workspace/workspace.service.js';
 import { NotesGateway } from './notes.gateway.js';
 import { CreateFolderDto } from './dto/create-folder.dto.js';
 import { UpdateFolderDto } from './dto/update-folder.dto.js';
@@ -12,10 +13,12 @@ import { MoveFolderDto } from './dto/move-folder.dto.js';
 export class NotesService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly workspaceService: WorkspaceService,
     private readonly notesGateway: NotesGateway,
   ) {}
 
-  async getFolders(workspaceId: string) {
+  async getFolders(workspaceId: string, userId: string) {
+    await this.workspaceService.assertMember(workspaceId, userId);
     return this.prisma.noteFolder.findMany({
       where: { workspaceId },
       include: {
@@ -32,7 +35,8 @@ export class NotesService {
     });
   }
 
-  async getFolderTree(workspaceId: string) {
+  async getFolderTree(workspaceId: string, userId: string) {
+    await this.workspaceService.assertMember(workspaceId, userId);
     return this.prisma.noteFolder.findMany({
       where: { workspaceId, parentId: null },
       include: {
@@ -49,8 +53,9 @@ export class NotesService {
     });
   }
 
-  async createFolder(dto: CreateFolderDto) {
+  async createFolder(userId: string, dto: CreateFolderDto) {
     const workspaceId = dto.workspaceId!;
+    await this.workspaceService.assertMember(workspaceId, userId);
     const maxOrder = await this.prisma.noteFolder
       .aggregate({
         where: { workspaceId, parentId: dto.parentId ?? null },
@@ -69,7 +74,12 @@ export class NotesService {
     return folder;
   }
 
-  async updateFolder(id: string, dto: UpdateFolderDto) {
+  async updateFolder(id: string, userId: string, dto: UpdateFolderDto) {
+    const existing = await this.prisma.noteFolder.findUniqueOrThrow({
+      where: { id },
+      select: { workspaceId: true },
+    });
+    await this.workspaceService.assertMember(existing.workspaceId, userId);
     const folder = await this.prisma.noteFolder.update({
       where: { id },
       data: dto,
@@ -78,20 +88,25 @@ export class NotesService {
     return folder;
   }
 
-  async moveFolder(id: string, dto: MoveFolderDto) {
+  async moveFolder(id: string, userId: string, dto: MoveFolderDto) {
+    const folder = await this.prisma.noteFolder.findUniqueOrThrow({
+      where: { id },
+      select: { workspaceId: true },
+    });
+    await this.workspaceService.assertMember(folder.workspaceId, userId);
     if (dto.parentId === id) return this.getFolderById(id);
     if (dto.parentId) {
       const wouldCreateCycle = await this.isDescendant(dto.parentId, id);
       if (wouldCreateCycle) throw new Error('Cannot move folder into its own descendant');
     }
-    const folder = await this.prisma.noteFolder.findUniqueOrThrow({
+    const folderWithParent = await this.prisma.noteFolder.findUniqueOrThrow({
       where: { id },
       select: { workspaceId: true, parentId: true },
     });
     const parentId = dto.parentId ?? null;
     const maxOrder = await this.prisma.noteFolder
       .aggregate({
-        where: { workspaceId: folder.workspaceId, parentId },
+        where: { workspaceId: folderWithParent.workspaceId, parentId },
         _max: { order: true },
       })
       .then((r) => (r._max.order ?? -1) + 1);
@@ -100,7 +115,7 @@ export class NotesService {
       where: { id },
       data: { parentId, order },
     });
-    this.notesGateway.broadcastNotesStructureUpdate(updated.workspaceId);
+    this.notesGateway.broadcastNotesStructureUpdate(folderWithParent.workspaceId);
     return updated;
   }
 
@@ -122,31 +137,36 @@ export class NotesService {
     return false;
   }
 
-  async deleteFolder(id: string) {
+  async deleteFolder(id: string, userId: string) {
     const folder = await this.prisma.noteFolder.findUniqueOrThrow({
       where: { id },
       select: { workspaceId: true },
     });
+    await this.workspaceService.assertMember(folder.workspaceId, userId);
     await this.prisma.noteFolder.delete({ where: { id } });
     this.notesGateway.broadcastNotesStructureUpdate(folder.workspaceId);
   }
 
-  async getNotes(workspaceId: string) {
+  async getNotes(workspaceId: string, userId: string) {
+    await this.workspaceService.assertMember(workspaceId, userId);
     return this.prisma.note.findMany({
       where: { workspaceId },
       orderBy: [{ isPinned: 'desc' }, { order: 'asc' }, { updatedAt: 'desc' }],
     });
   }
 
-  async getNote(id: string) {
-    return this.prisma.note.findUniqueOrThrow({
+  async getNote(id: string, userId: string) {
+    const note = await this.prisma.note.findUniqueOrThrow({
       where: { id },
     });
+    await this.workspaceService.assertMember(note.workspaceId, userId);
+    return note;
   }
 
-  async searchNotes(workspaceId: string, query: string) {
+  async searchNotes(workspaceId: string, query: string, userId: string) {
+    await this.workspaceService.assertMember(workspaceId, userId);
     const q = query.trim().toLowerCase();
-    if (!q) return this.getNotes(workspaceId);
+    if (!q) return this.getNotes(workspaceId, userId);
     return this.prisma.note.findMany({
       where: {
         workspaceId,
@@ -159,8 +179,9 @@ export class NotesService {
     });
   }
 
-  async createNote(dto: CreateNoteDto) {
+  async createNote(userId: string, dto: CreateNoteDto) {
     const workspaceId = dto.workspaceId!;
+    await this.workspaceService.assertMember(workspaceId, userId);
     const folderId = dto.folderId ?? null;
     const maxOrder = await this.prisma.note
       .aggregate({
@@ -182,7 +203,12 @@ export class NotesService {
     return note;
   }
 
-  async updateNote(id: string, dto: UpdateNoteDto) {
+  async updateNote(id: string, userId: string, dto: UpdateNoteDto) {
+    const existing = await this.prisma.note.findUniqueOrThrow({
+      where: { id },
+      select: { workspaceId: true },
+    });
+    await this.workspaceService.assertMember(existing.workspaceId, userId);
     const note = await this.prisma.note.update({
       where: { id },
       data: dto,
@@ -192,7 +218,12 @@ export class NotesService {
     return note;
   }
 
-  async moveNote(id: string, dto: MoveNoteDto) {
+  async moveNote(id: string, userId: string, dto: MoveNoteDto) {
+    const existing = await this.prisma.note.findUniqueOrThrow({
+      where: { id },
+      select: { workspaceId: true },
+    });
+    await this.workspaceService.assertMember(existing.workspaceId, userId);
     const note = await this.prisma.note.update({
       where: { id },
       data: { folderId: dto.folderId ?? null, order: dto.order },
@@ -202,20 +233,22 @@ export class NotesService {
     return note;
   }
 
-  async deleteNote(id: string) {
+  async deleteNote(id: string, userId: string) {
     const note = await this.prisma.note.findUniqueOrThrow({
       where: { id },
       select: { workspaceId: true },
     });
+    await this.workspaceService.assertMember(note.workspaceId, userId);
     await this.prisma.note.delete({ where: { id } });
     this.notesGateway.broadcastNotesStructureUpdate(note.workspaceId);
   }
 
-  async getBacklinks(noteId: string) {
+  async getBacklinks(noteId: string, userId: string) {
     const note = await this.prisma.note.findUniqueOrThrow({
       where: { id: noteId },
       select: { title: true, workspaceId: true },
     });
+    await this.workspaceService.assertMember(note.workspaceId, userId);
     const allNotes = await this.prisma.note.findMany({
       where: {
         workspaceId: note.workspaceId,

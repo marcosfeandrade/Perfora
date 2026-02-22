@@ -1,22 +1,48 @@
-import { notFound } from "next/navigation";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { KanbanBoard } from "@/features/agile/KanbanBoard";
+import type { Board } from "@/lib/types";
 
-type BoardPageProps = {
-  params: Promise<{ id: string; boardId: string }>;
-};
+export default function BoardKanbanPage() {
+  const params = useParams();
+  const router = useRouter();
+  const workspaceId = params.id as string;
+  const boardId = params.boardId as string;
+  const [board, setBoard] = useState<Board | null>(null);
+  const [loading, setLoading] = useState(true);
 
-export default async function BoardKanbanPage({ params }: BoardPageProps) {
-  const { id: workspaceId, boardId } = await params;
-  let board;
+  useEffect(() => {
+    let cancelled = false;
+    api.agile.boards
+      .get(boardId)
+      .then((b) => {
+        if (!cancelled && b.workspaceId !== workspaceId) {
+          router.replace("/");
+          return;
+        }
+        if (!cancelled) setBoard(b);
+      })
+      .catch(() => {
+        if (!cancelled) router.replace(`/workspace/${workspaceId}/planner/board`);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [boardId, workspaceId, router]);
 
-  try {
-    board = await api.agile.boards.get(boardId);
-  } catch {
-    notFound();
+  if (loading || !board) {
+    return (
+      <div className="h-full flex items-center justify-center p-8">
+        <p className="text-muted-foreground">Carregando board...</p>
+      </div>
+    );
   }
-
-  if (board.workspaceId !== workspaceId) notFound();
 
   return (
     <div className="h-full min-h-0 flex flex-col">
