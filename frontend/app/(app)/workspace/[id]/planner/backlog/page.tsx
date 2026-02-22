@@ -1,32 +1,11 @@
-import { api } from "@/lib/api";
-import { BacklogView } from "@/features/agile/BacklogView";
+"use client";
 
-type BacklogPageProps = {
-  params: Promise<{ id: string }>;
-};
+import { useParams } from "next/navigation";
+import { BacklogViewWrapper } from "@/features/agile/BacklogViewWrapper";
 
-export default async function BacklogPage({ params }: BacklogPageProps) {
-  const { id: workspaceId } = await params;
-  let backlogCards: Awaited<ReturnType<typeof api.agile.backlog>> = [];
-  let boards: Awaited<ReturnType<typeof api.agile.boards.listByWorkspace>> = [];
+export default function BacklogPage() {
+  const params = useParams();
+  const workspaceId = params.id as string;
 
-  try {
-    [backlogCards, boards] = await Promise.all([
-      api.agile.backlog(workspaceId),
-      api.agile.boards.listByWorkspace(workspaceId),
-    ]);
-  } catch {
-    backlogCards = [];
-    boards = [];
-  }
-
-  return (
-    <div className="p-6">
-      <BacklogView
-        workspaceId={workspaceId}
-        backlogCards={backlogCards}
-        boards={boards}
-      />
-    </div>
-  );
+  return <BacklogViewWrapper workspaceId={workspaceId} />;
 }
