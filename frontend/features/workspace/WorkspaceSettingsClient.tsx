@@ -52,7 +52,7 @@ export function WorkspaceSettingsClient({
   initialName,
   initialPlannerTaskPrefix,
 }: WorkspaceSettingsClientProps) {
-  const { refreshWorkspaces } = useWorkspaces();
+  const { refreshWorkspaces, updateWorkspace } = useWorkspaces();
   const currentUser = getStoredUser();
   const [name, setName] = useState(initialName);
   const [plannerTaskPrefix, setPlannerTaskPrefix] = useState(initialPlannerTaskPrefix);
@@ -126,14 +126,15 @@ export function WorkspaceSettingsClient({
 
   const handleSaveName = useCallback(async () => {
     if (name.trim() === initialName) return;
+    const newName = name.trim();
     setSavingName(true);
     try {
-      await api.workspaces.update(workspaceId, { name: name.trim() });
-      await refreshWorkspaces();
+      await api.workspaces.update(workspaceId, { name: newName });
+      updateWorkspace(workspaceId, { name: newName });
     } finally {
       setSavingName(false);
     }
-  }, [workspaceId, name, initialName, refreshWorkspaces]);
+  }, [workspaceId, name, initialName, updateWorkspace]);
 
   const handleSavePrefix = useCallback(async () => {
     const value = plannerTaskPrefix.trim() || null;

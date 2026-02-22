@@ -18,6 +18,7 @@ type WorkspaceContextValue = {
   workspaces: Workspace[];
   createWorkspace: (name: string) => Promise<Workspace>;
   refreshWorkspaces: () => Promise<void>;
+  updateWorkspace: (workspaceId: string, updates: Partial<Workspace>) => void;
 };
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -44,9 +45,20 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     return { id: ws.id, name: ws.name };
   }, []);
 
+  const updateWorkspace = useCallback(
+    (workspaceId: string, updates: Partial<Workspace>) => {
+      setWorkspaces((prev) =>
+        prev.map((ws) =>
+          ws.id === workspaceId ? { ...ws, ...updates } : ws
+        )
+      );
+    },
+    []
+  );
+
   return (
     <WorkspaceContext.Provider
-      value={{ workspaces, createWorkspace, refreshWorkspaces }}
+      value={{ workspaces, createWorkspace, refreshWorkspaces, updateWorkspace }}
     >
       {children}
     </WorkspaceContext.Provider>
