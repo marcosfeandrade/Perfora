@@ -45,6 +45,13 @@ export function onBacklogUpdate(cb: () => void) {
   return () => s.off("backlog-update", cb);
 }
 
+export function onBoardsListUpdate(cb: () => void) {
+  const s = getAgileSocket();
+  if (!s) return () => {};
+  s.on("boards-list-update", cb);
+  return () => s.off("boards-list-update", cb);
+}
+
 export function getNotesSocket(): Socket | null {
   if (typeof window === "undefined") return null;
   const url = getWsUrl();

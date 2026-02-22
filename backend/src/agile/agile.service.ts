@@ -21,12 +21,14 @@ export class AgileService {
 
   async createBoard(userId: string, dto: CreateBoardDto) {
     await this.workspaceService.assertMember(dto.workspaceId, userId);
-    return this.prisma.board.create({
+    const board = await this.prisma.board.create({
       data: {
         name: dto.name,
         workspaceId: dto.workspaceId,
       },
     });
+    this.agileGateway.broadcastBoardsListUpdate(dto.workspaceId);
+    return board;
   }
 
   async findBacklogCards(workspaceId: string, userId: string) {
@@ -108,9 +110,11 @@ export class AgileService {
       select: { workspaceId: true },
     });
     await this.workspaceService.assertMember(board.workspaceId, userId);
-    return this.prisma.board.delete({
+    const deleted = await this.prisma.board.delete({
       where: { id },
     });
+    this.agileGateway.broadcastBoardsListUpdate(board.workspaceId);
+    return deleted;
   }
 
   async createColumn(userId: string, dto: CreateColumnDto) {
